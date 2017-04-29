@@ -1,0 +1,990 @@
+{
+  "devices": [
+    {
+      "ADDRESS": "BidCoS-RF",
+      "CHILDREN": [
+        "BidCoS-RF:0",
+        "BidCoS-RF:1",
+        "BidCoS-RF:2",
+        "BidCoS-RF:3",
+        "BidCoS-RF:4",
+        "BidCoS-RF:5",
+        "BidCoS-RF:6",
+        "BidCoS-RF:7",
+        "BidCoS-RF:8",
+        "BidCoS-RF:9",
+        "BidCoS-RF:10",
+        "BidCoS-RF:11",
+        "BidCoS-RF:12",
+        "BidCoS-RF:13",
+        "BidCoS-RF:14",
+        "BidCoS-RF:15",
+        "BidCoS-RF:16",
+        "BidCoS-RF:17",
+        "BidCoS-RF:18",
+        "BidCoS-RF:19",
+        "BidCoS-RF:20",
+        "BidCoS-RF:21",
+        "BidCoS-RF:22",
+        "BidCoS-RF:23",
+        "BidCoS-RF:24",
+        "BidCoS-RF:25",
+        "BidCoS-RF:26",
+        "BidCoS-RF:27",
+        "BidCoS-RF:28",
+        "BidCoS-RF:29",
+        "BidCoS-RF:30",
+        "BidCoS-RF:31",
+        "BidCoS-RF:32",
+        "BidCoS-RF:33",
+        "BidCoS-RF:34",
+        "BidCoS-RF:35",
+        "BidCoS-RF:36",
+        "BidCoS-RF:37",
+        "BidCoS-RF:38",
+        "BidCoS-RF:39",
+        "BidCoS-RF:40",
+        "BidCoS-RF:41",
+        "BidCoS-RF:42",
+        "BidCoS-RF:43",
+        "BidCoS-RF:44",
+        "BidCoS-RF:45",
+        "BidCoS-RF:46",
+        "BidCoS-RF:47",
+        "BidCoS-RF:48",
+        "BidCoS-RF:49",
+        "BidCoS-RF:50"
+      ],
+      "FIRMWARE": "2.27.8",
+      "FLAGS": 9,
+      "INTERFACE": "KEQ0102172",
+      "PARAMSETS": [
+        "MASTER"
+      ],
+      "PARENT": "",
+      "RF_ADDRESS": 2187656,
+      "ROAMING": 0,
+      "RX_MODE": 1,
+      "TYPE": "HM-RCV-50",
+      "UPDATABLE": 0,
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:0",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 0,
+      "FLAGS": 3,
+      "INDEX": 0,
+      "LINK_SOURCE_ROLES": "",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "MAINTENANCE",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:1",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 1,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:2",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 2,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:3",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 3,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:4",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 4,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:5",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 5,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:6",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 6,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:7",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 7,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:8",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 8,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:9",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 9,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:10",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 10,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:11",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 11,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:12",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 12,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:13",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 13,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:14",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 14,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:15",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 15,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:16",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 16,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:17",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 17,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:18",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 18,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:19",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 19,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:20",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 20,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:21",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 21,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:22",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 22,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:23",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 23,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:24",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 24,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:25",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 25,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:26",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 26,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:27",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 27,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:28",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 28,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:29",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 29,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:30",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 30,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:31",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 31,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:32",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 32,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:33",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 33,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:34",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 34,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:35",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 35,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:36",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 36,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:37",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 37,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:38",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 38,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:39",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 39,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:40",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 40,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:41",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 41,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:42",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 42,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:43",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 43,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:44",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 44,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:45",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 45,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:46",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 46,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:47",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 47,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:48",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 48,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:49",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 49,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    },
+    {
+      "ADDRESS": "BidCoS-RF:50",
+      "AES_ACTIVE": 0,
+      "DIRECTION": 1,
+      "FLAGS": 1,
+      "INDEX": 50,
+      "LINK_SOURCE_ROLES": "KEYMATIC REMOTECONTROL_RECEIVER SWITCH WINMATIC",
+      "LINK_TARGET_ROLES": "",
+      "PARAMSETS": [
+        "LINK",
+        "MASTER",
+        "VALUES"
+      ],
+      "PARENT": "BidCoS-RF",
+      "PARENT_TYPE": "HM-RCV-50",
+      "TYPE": "VIRTUAL_KEY",
+      "VERSION": 6
+    }
+  ]
+}
