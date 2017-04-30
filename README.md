@@ -22,8 +22,8 @@ This can be used for automated tests of software connecting to a Homematic CCU
 
 ## What does it do?
 
-**Warning: This is far away from a complete simulation** Until now I only implemented what was needed for basic tests of
-[hm2mqtt.js](https://github.com/hobbyquaker/hm2mqtt.js).
+**Warning: This is far away from a complete simulation and still work in progress** Until now I'm only implementing what 
+I needed for basic tests of [hm2mqtt.js](https://github.com/hobbyquaker/hm2mqtt.js).
 
 * Simulated rfd, [binrpc](https://github.com/hobbyquaker/binrpc) only, interface on port 2001
 * Simulated hmipserver, xmlrpc only, interface on port 2010
@@ -58,6 +58,10 @@ In the behaviors directory are two example scripts:
 
 ## Todo
 
+* bugfixes...
+* extend script api
+* more behavior examples
+* more rfd devices
 * correct error responses to invalid methodCalls
 * incoming getParamset
 * MASTER, MAINTENANCE and LINK paramsets
