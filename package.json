@@ -4,7 +4,7 @@
   "description": "Simulates a Homematic CCU",
   "main": "index.js",
   "scripts": {
-    "test": "xo --space 4"
+    "test": "camo-purge ; xo --space 4"
   },
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
     "yalm": "^4.0.2"
   },
   "devDependencies": {
+    "camo-purge": "^1.0.1",
     "xo": "^0.18.1"
   }
 }

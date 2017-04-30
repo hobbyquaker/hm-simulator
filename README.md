@@ -76,3 +76,6 @@ Pull Request welcome! :-)
 
 MIT 
 Copyright (c) 2017 Sebastian Raff
+
+[mit-badge]: https://img.shields.io/badge/License-MIT-blue.svg?style=flat
+[mit-url]: LICENSE
