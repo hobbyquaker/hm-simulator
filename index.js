@@ -55,10 +55,10 @@ function setDefaultValues(iface) {
 }
 
 const rfdServer = binrpc.createServer({host: config.listenAddress, port: config.binrpcListenPort});
-log.info('binrpc server listening on', config.listenAddress, config.binrpcListenPort);
+log.info('rfd binrpc server listening on', config.listenAddress, config.binrpcListenPort);
 
 const hmipServer = xmlrpc.createServer({host: config.listenAddress, port: config.xmlrpcListenPort});
-log.info('binrpc server listening on', config.listenAddress, config.xmlrpcListenPort);
+log.info('hmip xmlrpc server listening on', config.listenAddress, config.xmlrpcListenPort);
 
 const rpcMethods = {
     'system.listMethods': (err, iface, params, callback) => {
