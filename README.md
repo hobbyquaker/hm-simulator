@@ -1,10 +1,10 @@
 # hm-simulator
 
-[![License][mit-badge]][mit-url]
 [![NPM version](https://badge.fury.io/js/hm-simulator.svg)](http://badge.fury.io/js/hm-simulator)
 [![Dependency Status](https://img.shields.io/gemnasium/hobbyquaker/hm-simulator.svg?maxAge=2592000)](https://gemnasium.com/github.com/hobbyquaker/hm-simulator)
-[![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/sindresorhus/xo)
 [![Build Status](https://travis-ci.org/hobbyquaker/hm-simulator.svg?branch=master)](https://travis-ci.org/hobbyquaker/hm-simulator)
+[![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/sindresorhus/xo)
+[![License][mit-badge]][mit-url]
 
 > Simulates (partly) a Homematic CCU
 
