@@ -29,25 +29,14 @@ This can be used for automated tests of software connecting to a Homematic CCU
 * Simulated hmipserver, xmlrpc only, interface on port 2010
 
 
-### Until now implemented Devices
-
-#### rfd
-
-* HM-RCV-50 (SHORT_PRESS event on BidCoS-RF:1 is triggered every 5 seconds)
-
-
-#### hmipserver
-
-* HMIP-PS (Toggles its power state every 30 seconds)
-
-
-#### Until now implemented RPC methods
+### RPC methods implemented until now
 
 **incoming:**
 
 * init 
 * ping
 * system.listMethods
+* getParamsetDescription
 
 
 **outgoing:**
@@ -56,15 +45,26 @@ This can be used for automated tests of software connecting to a Homematic CCU
 * newDevices 
 * deleteDevices 
 * event
+* system.multicall 
+
+
+### Scripting
+
+In the behaviors directory are two example scripts:
+
+ * `virtual-button-press.js` triggers a `PRESS_SHORT` on `BidCoS-RF:1` every 5 seconds.
+ * `window-open-close.js` opens and closes `0000D3C98C9233:1` every 30 seconds.
 
 
 ## Todo
 
-* incoming setValue
-* incoming getParamsetDescription
-* outgoing system.multicall 
-* script api
+* correct error responses to invalid methodCalls
+* incoming getParamset
+* MASTER, MAINTENANCE and LINK paramsets
+* service messages, incoming getServiceMessages
+* incoming putParamset
 * rega listener on port 8181, rega script mocking 
+* ... many more... ;)
 
 
 ## Contributing

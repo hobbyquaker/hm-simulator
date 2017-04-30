@@ -1,6 +1,6 @@
 {
   "name": "hm-simulator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Simulates a Homematic CCU",
   "main": "index.js",
   "scripts": {
@@ -28,7 +28,7 @@
   "homepage": "https://github.com/hobbyquaker/hm-simulator#readme",
   "dependencies": {
     "async": "^2.3.0",
-    "binrpc": "^3.0.0",
+    "binrpc": "^3.0.1",
     "homematic-xmlrpc": "^1.0.2",
     "yalm": "^4.0.2"
   },
