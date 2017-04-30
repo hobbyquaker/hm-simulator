@@ -1,8 +1,12 @@
 {
   "name": "hm-simulator",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simulates a Homematic CCU",
   "main": "index.js",
+  "preferGlobal": true,
+  "bin": {
+    "hm-simulator": "./index.js"
+  },
   "scripts": {
     "test": "camo-purge ; xo --space 4"
   },
