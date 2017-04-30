@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-const log = require('yalm');
-log.setLevel('debug');
-
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
+
+const log = require('yalm');
+
+log.setLevel('debug');
+
 const binrpc = require('binrpc');
 const xmlrpc = require('homematic-xmlrpc');
 const config = require('./config.js');
@@ -17,12 +19,9 @@ const devices = {
 
 const paramsetDescriptions = require('./data/paramset-descriptions.json');
 
-
-
-
 const clients = {
     rfd: {},
-    hmip: {},
+    hmip: {}
 };
 
 const values = {
@@ -42,14 +41,13 @@ function setDefaultValues(iface) {
                     if (!values[iface][dev.ADDRESS]) {
                         values[iface][dev.ADDRESS] = {
                             VALUES: {}
-                        }
+                        };
                     }
                     if (ps[dp].type === 'ENUM') {
                         values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].VALUE_LIST.indexOf(ps[dp].DEFAULT);
                     } else {
                         values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].DEFAULT;
                     }
-
                 });
             }
         }
@@ -99,7 +97,9 @@ const rpcMethods = {
                     log.debug('rpc >', url, methodName, shortenParams(params));
                     clients[iface][clientId].client.methodCall(methodName, params, (err, res) => {
                         log.debug('rpc <', url, shortenParams(res));
-                        if (typeof callback === 'function') callback(err, res);
+                        if (typeof callback === 'function') {
+                            callback(err, res);
+                        }
                     });
                 }
             };
@@ -147,7 +147,7 @@ function eventMulticall(iface, events) {
     Object.keys(clients[iface]).forEach(c => {
         const multicall = [];
         const client = clients[iface][c];
-        events.forEach(singleEvent  => {
+        events.forEach(singleEvent => {
             const ev = [client.id, singleEvent[0], singleEvent[1], singleEvent[2]];
             multicall.push({methodName: 'event', params: ev});
         });
@@ -187,8 +187,10 @@ function checkDevices(iface, client, clientDevices) {
         } else {
             const clientDev = clientDevices[clientDeviceIndex];
             if (iface === 'hmip') {
+                // eslint-disable-next-line no-constant-condition
                 if (
-                    true || // no-constant-condition Todo remove this line when https://github.com/eq-3/occu/issues/45 is fixed
+                    // Todo remove next line when https://github.com/eq-3/occu/issues/45 is fixed
+                    true ||
                     // Todo is this correct? https://github.com/eq-3/occu/issues/43
                     clientDev.VERSION !== dev.VERSION ||
                     clientDev.AES_ACTIVE !== dev.AES_ACTIVE ||
@@ -293,7 +295,6 @@ function setValue(iface, address, datapoint, value) {
     log.debug('setValue', iface, address, datapoint, value);
     const dev = getDevice(iface, address);
     if (dev) {
-
         const ps = getParamsetDescription(dev, 'VALUES');
         if (ps && ps[datapoint]) {
             switch (ps[datapoint].TYPE) {
@@ -321,7 +322,7 @@ function setValue(iface, address, datapoint, value) {
 
             if (ps[datapoint].OPERATIONS & 4) {
                 const events = [];
-                if (ps[datapoint].OPERATIONS.TYPE !== 'ACTION') {
+                if (ps[datapoint].TYPE === 'ACTION') {
                     events.push([address, datapoint, values[iface][address].VALUES[datapoint]]);
                 } else {
                     Object.keys(values[iface][address].VALUES).forEach(dp => {
@@ -336,11 +337,9 @@ function setValue(iface, address, datapoint, value) {
     }
 }
 
-
 const api = new EventEmitter();
 
 api.on('setValue', setValue);
-
 
 function loadBehaviors() {
     const p = path.join(__dirname, 'behaviors');
