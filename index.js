@@ -166,6 +166,7 @@ function startInit(iface, client) {
 }
 
 function checkDevices(iface, client, clientDevices) {
+    clientDevices = clientDevices || [];
     log.info(iface, 'client', client.url, 'knows', clientDevices.length, 'devices');
 
     const clientDeviceAddresses = [];

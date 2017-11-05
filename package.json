@@ -1,6 +1,6 @@
 {
   "name": "hm-simulator",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Simulates a Homematic CCU",
   "main": "index.js",
   "preferGlobal": true,
