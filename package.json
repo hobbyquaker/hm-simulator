@@ -1,6 +1,6 @@
 {
   "name": "hm-simulator",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "Simulates a Homematic CCU",
   "main": "index.js",
   "preferGlobal": true,
@@ -24,7 +24,7 @@
     "xmlrpc",
     "binrpc"
   ],
-  "author": "Sebastian Raff <hq@ccu.io>",
+  "author": "Sebastian Raff <hobbyquaker@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/hobbyquaker/hm-simulator/issues"
@@ -33,11 +33,14 @@
   "dependencies": {
     "async": "^2.3.0",
     "binrpc": "^3.0.1",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
     "homematic-xmlrpc": "^1.0.2",
+    "request": "^2.88.0",
     "yalm": "^4.0.2"
   },
   "devDependencies": {
     "camo-purge": "^1.0.1",
-    "xo": "^0.18.1"
+    "xo": "^0.24.0"
   }
 }
