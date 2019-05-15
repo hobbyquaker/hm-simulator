@@ -44,18 +44,20 @@ module.exports = class HmSim {
                 if (dev.PARENT_TYPE) {
                     if (dev.PARAMSETS.indexOf('VALUES') !== -1) {
                         const ps = getParamsetDescription(iface, dev, 'VALUES');
-                        Object.keys(ps).forEach(dp => {
-                            if (!values[iface][dev.ADDRESS]) {
-                                values[iface][dev.ADDRESS] = {
-                                    VALUES: {}
-                                };
-                            }
-                            if (ps[dp].type === 'ENUM') {
-                                values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].VALUE_LIST.indexOf(ps[dp].DEFAULT);
-                            } else {
-                                values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].DEFAULT;
-                            }
-                        });
+                        if (ps) {
+                            Object.keys(ps).forEach(dp => {
+                                if (!values[iface][dev.ADDRESS]) {
+                                    values[iface][dev.ADDRESS] = {
+                                        VALUES: {}
+                                    };
+                                }
+                                if (ps[dp].type === 'ENUM') {
+                                    values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].VALUE_LIST.indexOf(ps[dp].DEFAULT);
+                                } else {
+                                    values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].DEFAULT;
+                                }
+                            });
+                        }
                     }
                 }
             });
