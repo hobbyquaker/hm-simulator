@@ -1,6 +1,6 @@
 {
   "name": "hm-simulator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Simulates a Homematic CCU",
   "main": "index.js",
   "preferGlobal": true,
@@ -31,7 +31,7 @@
   },
   "homepage": "https://github.com/hobbyquaker/hm-simulator#readme",
   "dependencies": {
-    "async": "^2.3.0",
+    "async": "^3.1.0",
     "binrpc": "^3.0.1",
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
@@ -41,6 +41,15 @@
   },
   "devDependencies": {
     "camo-purge": "^1.0.1",
-    "xo": "^0.24.0"
+    "xo": "^0.25.3"
+  },
+  "xo": {
+    "space": 4,
+    "rules": {
+      "no-cond-assign": "warn",
+      "no-case-declarations": "warn",
+      "no-constant-condition": "warn",
+      "no-unused-vars": "warn"
+    }
   }
 }

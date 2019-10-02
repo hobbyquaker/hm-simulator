@@ -8,19 +8,18 @@ const xmlrpc = require('homematic-xmlrpc');
 
 module.exports = class HmSim {
     constructor(options = {}) {
-
         const log = options.log || {
             debug: () => {},
             info: () => {},
             warn: () => {},
-            error: () => {},
+            error: () => {}
         };
 
         this.log = log;
 
         const config = options.config || {};
 
-        const devices = options.devices || {rfd:{devices:[]}, hmip: {devices:[]}};
+        const devices = options.devices || {rfd: {devices: []}, hmip: {devices: []}};
 
         const paramsetDescriptions = require('./data/paramset-descriptions.json');
 
@@ -42,7 +41,7 @@ module.exports = class HmSim {
         function setDefaultValues(iface) {
             devices[iface].devices.forEach(dev => {
                 if (dev.PARENT_TYPE) {
-                    if (dev.PARAMSETS.indexOf('VALUES') !== -1) {
+                    if (dev.PARAMSETS.includes('VALUES')) {
                         const ps = getParamsetDescription(iface, dev, 'VALUES');
                         Object.keys(ps).forEach(dp => {
                             if (!values[iface][dev.ADDRESS]) {
@@ -50,6 +49,7 @@ module.exports = class HmSim {
                                     VALUES: {}
                                 };
                             }
+
                             if (ps[dp].type === 'ENUM') {
                                 values[iface][dev.ADDRESS].VALUES[dp] = ps[dp].VALUE_LIST.indexOf(ps[dp].DEFAULT);
                             } else {
@@ -80,21 +80,25 @@ module.exports = class HmSim {
                 if (protocol === 'xmlrpc_bin') {
                     protocol = 'binrpc';
                 }
+
                 const clientId = [host, port].join(':');
 
-                if (clientId === '') {
+                if (id === '') {
                     log.debug('remove', iface, clients[iface][clientId].url);
                     let client = clients[iface][clientId];
                     // Todo ...
                     if (client && typeof client.client.end === 'function') {
                         client.client.end();
                     }
+
                     if (client && typeof client.client.close === 'function') {
                         client.client.close();
                     }
+
                     if (client && typeof client.client.destroy === 'function') {
                         client.client.destroy();
                     }
+
                     client = null;
                     delete clients[iface][clientId];
                 } else {
@@ -114,6 +118,7 @@ module.exports = class HmSim {
                     };
                     startInit(iface, clients[iface][clientId]);
                 }
+
                 callback(null, '');
             },
             listDevices: (err, iface, params, callback) => {
@@ -128,6 +133,7 @@ module.exports = class HmSim {
                     // Todo Remove when https://github.com/eq-3/occu/issues/42 is fixed
                     return;
                 }
+
                 const [id] = params;
                 event(iface, ['CENTRAL', 'PONG', id]);
                 callback(null, '');
@@ -197,9 +203,8 @@ module.exports = class HmSim {
                 } else {
                     const clientDev = clientDevices[clientDeviceIndex];
                     if (iface === 'hmip') {
-                        // eslint-disable-next-line no-constant-condition
                         if (
-                            // Todo remove next line when https://github.com/eq-3/occu/issues/45 is fixed
+                        // Todo remove next line when https://github.com/eq-3/occu/issues/45 is fixed
                             true ||
                             // Todo is this correct? https://github.com/eq-3/occu/issues/43
                             clientDev.VERSION !== dev.VERSION ||
@@ -236,7 +241,7 @@ module.exports = class HmSim {
                 }
             });
             clientDevices.forEach(clientDev => {
-                if (deviceAddresses.indexOf(clientDev.ADDRESS) === -1) {
+                if (!deviceAddresses.includes(clientDev.ADDRESS)) {
                     log.debug('device unknown', clientDev.ADDRESS);
                     deleteDevices.push(clientDev.ADDRESS);
                 }
@@ -276,20 +281,23 @@ module.exports = class HmSim {
             if (!params) {
                 return;
             }
+
             const str = JSON.stringify(params);
             if (str.length > 77) {
                 return str.slice(0, 77) + '...';
             }
+
             return str;
         }
 
         function getDevice(iface, address) {
             const devs = devices[iface].devices;
-            for (let i = 0; i < devs.length; i++) {
-                if (devs[i].ADDRESS === address) {
-                    return devs[i];
+            for (const element of devs) {
+                if (element.ADDRESS === address) {
+                    return element;
                 }
             }
+
             log.error(iface, 'unknown device', address);
             return false;
         }
@@ -299,19 +307,20 @@ module.exports = class HmSim {
             let d;
             if (device) {
                 if (device.PARENT) {
-                    // channel
+                    // Channel
                     cType = device.TYPE;
                     const devs = devices[iface].devices;
-                    for (let i = 0; i < devs.length; i++) {
-                        if (devs[i].ADDRESS === device.PARENT) {
-                            d = devs[i];
+                    for (const element of devs) {
+                        if (element.ADDRESS === device.PARENT) {
+                            d = element;
                             break;
                         }
                     }
                 } else {
-                    // device
+                    // Device
                     d = device;
                 }
+
                 switch (iface) {
                     case 'rfd':
                         iface = 'BidCos-RF';
@@ -329,9 +338,9 @@ module.exports = class HmSim {
         function getParamsetDescription(iface, dev, paramset) {
             if (typeof dev === 'string') {
                 const devs = devices[iface].devices;
-                for (let i = 0; i < devs.length; i++) {
-                    if (devs[i].ADDRESS === dev) {
-                        dev = devs[i];
+                for (const element of devs) {
+                    if (element.ADDRESS === dev) {
+                        dev = element;
                         break;
                     }
                 }
@@ -339,7 +348,6 @@ module.exports = class HmSim {
 
             const psName = paramsetName(iface, dev, paramset);
             return paramsetDescriptions[psName];
-
         }
 
         function setValue(iface, address, datapoint, value) {
@@ -355,6 +363,7 @@ module.exports = class HmSim {
                                 log.error('type mismatch', address, datapoint, ps[datapoint].TYPE);
                                 return;
                             }
+
                             break;
                         case 'INTEGER':
                         case 'FLOAT':
@@ -362,13 +371,16 @@ module.exports = class HmSim {
                                 log.error('type mismatch', address, datapoint, ps[datapoint].TYPE);
                                 return;
                             }
+
                             if ((value < ps[datapoint].MIN) || (value > ps[datapoint].MAx)) {
                                 log.error('range error', address, datapoint, ps[datapoint].MIN, ps[datapoint].MAX);
                                 return;
                             }
+
                             break;
                         default:
                     }
+
                     values[iface][address].VALUES[datapoint] = value;
 
                     if (ps[datapoint].OPERATIONS & 4) {
@@ -380,6 +392,7 @@ module.exports = class HmSim {
                                 events.push([address, dp, values[iface][address].VALUES[dp]]);
                             });
                         }
+
                         eventMulticall(iface, events);
                     }
                 } else {
@@ -392,14 +405,13 @@ module.exports = class HmSim {
 
         this.api.on('setValue', setValue);
 
-
-
         this.loadBehaviors(options.behaviorPath || path.join(__dirname, 'behaviors'));
 
         if (options.rega) {
-            this.regaSim = new RegaSim(options.rega, this.log)
+            this.regaSim = new RegaSim(options.rega, this.log);
         }
     }
+
     loadBehaviors(p) {
         const files = fs.readdirSync(p);
         files.forEach(file => {
@@ -409,7 +421,6 @@ module.exports = class HmSim {
             }
         });
     }
-
 
     close() {
         this.api.removeAllListeners();
@@ -423,7 +434,6 @@ module.exports = class HmSim {
 
 class RegaSim {
     constructor(options, log) {
-
         this.variables = options.variables || [];
         this.devices = options.channels || [];
         this.programs = options.programs || [];
@@ -438,7 +448,6 @@ class RegaSim {
         });
 
         this.app.post('/[a-zA-Z_-]+.exe', (req, res) => {
-
             const script = req.body.toString();
             const line = script.split('\n')[0];
             let response;
@@ -462,8 +471,8 @@ class RegaSim {
 
                 default:
                     let match;
-                    if (match = line.match(/dom\.GetObject\(([0-9]+)\).State\(([^)]*)\)/)) {
-                        let [_, id, val] = match;
+                    if (match = line.match(/dom\.GetObject\((\d+)\).State\(([^)]*)\)/)) {
+                        let [, id, val] = match;
                         id = parseInt(id, 10);
                         val = JSON.parse(val || '');
                         this.variables.forEach((v, i) => {
@@ -475,8 +484,10 @@ class RegaSim {
                     } else {
                         log.warn('unknown script', line);
                     }
+
                     response = this.response('');
             }
+
             res.set({
                 server: 'ise GmbH HTTP-Server v2.0',
                 'accept-ranges': 'bytes',
@@ -488,13 +499,14 @@ class RegaSim {
         });
 
         this.server = this.app.listen(options.port, () => {
-            //console.log('RegaSim listening on Port ' + options.port);
+            // Console.log('RegaSim listening on Port ' + options.port);
         });
-
     }
+
     close() {
         this.server.close();
     }
+
     response(stdout, vars = []) {
         if (typeof stdout !== 'string') {
             stdout = JSON.stringify(stdout);
@@ -516,6 +528,7 @@ class RegaSim {
 
         return stdout;
     }
+
     ts() {
         const d = new Date();
         return d.getFullYear() + '-' +
@@ -526,6 +539,4 @@ class RegaSim {
             ('0' + d.getSeconds()).slice(-2);
     }
 }
-
-
 

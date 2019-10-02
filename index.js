@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-const HmSim = require('./sim.js');
-
 const log = require('yalm');
+const HmSim = require('./sim.js');
 
 log.setLevel('debug');
 
