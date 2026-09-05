@@ -64,7 +64,7 @@ describe('base rpc methods', () => {
     it('answers an unknown method with a fault', async () => {
         const viaBinrpc = await rfd('doesNotExist', []);
         assert.equal(viaBinrpc.faultCode, -1);
-        assert.equal(viaBinrpc.faultString, 'Unknown method');
+        assert.equal(viaBinrpc.faultString, 'Invalid XML-RPC message');
 
         await assert.rejects(hmip('doesNotExist', []), (error) => {
             assert.equal(error.faultCode, -1);

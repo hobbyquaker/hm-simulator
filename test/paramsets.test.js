@@ -14,7 +14,11 @@ describe('getParamset / putParamset / getValue', () => {
     let hmip;
 
     before(async () => {
-        const started = await startSim();
+        // the fault table below is exercised with the strict mode; the measured 'bidcos' and
+        // 'hmip' behaviour has its own suite in config-pending.test.js
+        const started = await startSim({
+            interfaces: {rfd: {configPendingMode: 'strict'}, hmip: {configPendingMode: 'strict'}},
+        });
         sim = started.sim;
         rfd = binrpcCall(started.binrpcPort);
         hmip = xmlrpcCall(started.xmlrpcPort);
@@ -86,42 +90,42 @@ describe('getParamset / putParamset / getValue', () => {
         it('unknown address', async () => {
             const result = await rfd('getParamset', ['NOPE:1', 'MASTER']);
             assert.equal(result.faultCode, -2);
-            assert.equal(result.faultString, 'Unknown instance');
+            assert.equal(result.faultString, 'Invalid device');
         });
 
         it('unknown paramset', async () => {
             const result = await rfd('getParamset', [SWITCH, 'NOSUCHSET']);
-            assert.equal(result.faultCode, -3);
+            assert.equal(result.faultCode, -2);
         });
 
         it('unknown parameter', async () => {
             const result = await rfd('putParamset', [SWITCH, 'MASTER', {NOT_A_PARAMETER: 1}]);
-            assert.equal(result.faultCode, -4);
-            assert.equal(result.faultString, 'Unknown parameter');
+            assert.equal(result.faultCode, -5);
+            assert.equal(result.faultString, 'Unknown Parameter for value key');
             const value = await rfd('getValue', [SWITCH, 'NOT_A_DATAPOINT']);
-            assert.equal(value.faultCode, -4);
+            assert.equal(value.faultCode, -5);
         });
 
         it('read only parameter', async () => {
             const result = await rfd('putParamset', [SWITCH, 'MASTER', {SERIAL: 'x'}]);
             assert.equal(result.faultCode, -5);
-            assert.equal(result.faultString, 'Parameter is not writeable');
+            assert.equal(result.faultString, 'Invalid parameter or value');
         });
 
         it('wrong type', async () => {
             const result = await rfd('putParamset', [SWITCH, 'MASTER', {LOGGING: 'yes'}]);
-            assert.equal(result.faultCode, -6);
+            assert.equal(result.faultCode, -5);
             const setValue = await rfd('setValue', [SWITCH, 'STATE', 'on']);
-            assert.equal(setValue.faultCode, -6);
+            assert.equal(setValue.faultCode, -5);
         });
 
         it('out of range', async () => {
             const tooBig = await rfd('putParamset', [SWITCH, 'MASTER', {STATUSINFO_MINDELAY: 99}]);
-            assert.equal(tooBig.faultCode, -7);
+            assert.equal(tooBig.faultCode, -5);
             const tooSmall = await rfd('putParamset', [SWITCH, 'MASTER', {STATUSINFO_MINDELAY: 0}]);
-            assert.equal(tooSmall.faultCode, -7);
+            assert.equal(tooSmall.faultCode, -5);
             const noSuchEnum = await rfd('putParamset', [SWITCH, 'MASTER', {SEQUENCE: 'MAYBE'}]);
-            assert.equal(noSuchEnum.faultCode, -7);
+            assert.equal(noSuchEnum.faultCode, -5);
         });
 
         it('a rejected putParamset changes nothing', async () => {
@@ -132,7 +136,7 @@ describe('getParamset / putParamset / getValue', () => {
 
         it('arrive as an xmlrpc fault on the hmip interface', async () => {
             await assert.rejects(hmip('putParamset', [HMIP_SWITCH, 'MASTER', {ON_TIME: 99999}]), (error) => {
-                assert.equal(error.faultCode, -7);
+                assert.equal(error.faultCode, -5);
                 return true;
             });
         });

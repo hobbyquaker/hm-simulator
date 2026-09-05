@@ -60,6 +60,6 @@ describe('binrpc response encoding', () => {
 
     it('sends faults as a struct with faultCode and faultString', async () => {
         const result = await call('noSuchMethod', []);
-        assert.deepEqual(result, {faultCode: -1, faultString: 'Unknown method'});
+        assert.deepEqual(result, {faultCode: -1, faultString: 'Invalid XML-RPC message'});
     });
 });

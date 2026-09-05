@@ -64,8 +64,8 @@ describe('links', () => {
     });
 
     it('validates link paramsets like every other paramset', async () => {
-        assert.equal((await rfd('putParamset', [SWITCH, KEY, {SHORT_ON_TIME: 999999}])).faultCode, -7);
-        assert.equal((await rfd('putParamset', [SWITCH, KEY, {NOPE: 1}])).faultCode, -4);
+        assert.equal((await rfd('putParamset', [SWITCH, KEY, {SHORT_ON_TIME: 999999}])).faultCode, -5);
+        assert.equal((await rfd('putParamset', [SWITCH, KEY, {NOPE: 1}])).faultCode, -5);
     });
 
     it('includes paramsets and descriptions when the flags ask for it', async () => {
@@ -100,17 +100,17 @@ describe('links', () => {
     it('faults on an unknown link', async () => {
         assert.equal((await rfd('getLinkInfo', [SWITCH, 'ABC0000002:0'])).faultCode, -2);
         assert.equal((await rfd('removeLink', [SWITCH, 'ABC0000002:0'])).faultCode, -2);
-        assert.equal((await rfd('getParamset', [SWITCH, 'ABC0000002:0'])).faultCode, -3);
+        assert.equal((await rfd('getParamset', [SWITCH, 'ABC0000002:0'])).faultCode, -2);
     });
 
     it('faults when a channel has no LINK paramset', async () => {
         const result = await rfd('addLink', [`${fixtures.SWITCH_ADDRESS}:0`, SWITCH, '', '']);
-        assert.equal(result.faultCode, -8);
+        assert.equal(result.faultCode, -1);
     });
 
     it('removes a link and its paramsets', async () => {
         assert.equal(await rfd('removeLink', [KEY, SWITCH]), '');
         assert.deepEqual(await rfd('getLinks', []), []);
-        assert.equal((await rfd('getParamset', [SWITCH, KEY])).faultCode, -3);
+        assert.equal((await rfd('getParamset', [SWITCH, KEY])).faultCode, -2);
     });
 });

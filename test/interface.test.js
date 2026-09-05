@@ -92,7 +92,7 @@ describe('interface and service methods', () => {
         assert.equal((await rfd('getDeviceDescription', ['ABC0000002'])).faultCode, -2);
         assert.equal((await rfd('getDeviceDescription', ['ABC0000002:1'])).faultCode, -2);
         assert.deepEqual(await rfd('getLinks', []), []);
-        assert.equal((await rfd('deleteDevice', [`${DEVICE}:1`, 0])).faultCode, -8);
+        assert.equal((await rfd('deleteDevice', [`${DEVICE}:1`, 0])).faultCode, -1);
     });
 
     it('replaces a device and keeps its configuration', async () => {
@@ -154,6 +154,6 @@ describe('interface and service methods', () => {
 
     it('answers determineParameter', async () => {
         assert.equal(await rfd('determineParameter', ['REP0000001:1', 'MASTER', 'LOGGING']), '');
-        assert.equal((await rfd('determineParameter', ['REP0000001:1', 'MASTER', 'NOPE'])).faultCode, -4);
+        assert.equal((await rfd('determineParameter', ['REP0000001:1', 'MASTER', 'NOPE'])).faultCode, -5);
     });
 });
