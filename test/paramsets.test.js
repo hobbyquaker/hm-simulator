@@ -143,4 +143,11 @@ describe('getParamset / putParamset / getValue', () => {
         sim.api.emit('setValue', 'rfd', SWITCH, 'NOT_A_DATAPOINT', true);
         sim.api.emit('setValue', 'rfd', 'NOPE:1', 'STATE', true);
     });
+
+    it('the behaviour script api may report datapoints a client cannot write', async () => {
+        // WORKING is OPERATIONS 5 (read + event): a device reports it, a client cannot set it
+        assert.equal((await rfd('setValue', [SWITCH, 'WORKING', true])).faultCode, -5);
+        sim.api.emit('setValue', 'rfd', SWITCH, 'WORKING', true);
+        assert.equal(await rfd('getValue', [SWITCH, 'WORKING']), true);
+    });
 });
