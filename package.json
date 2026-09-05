@@ -1,14 +1,21 @@
 {
   "name": "hm-simulator",
-  "version": "0.1.1",
-  "description": "Simulates a Homematic CCU",
-  "main": "index.js",
+  "version": "1.0.0-dev.0",
+  "description": "Simulates a Homematic CCU (rfd, hmipserver, VirtualDevices, CUxD, ReGa) for automated tests",
+  "main": "sim.js",
   "preferGlobal": true,
   "bin": {
     "hm-simulator": "./index.js"
   },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
-    "test": "camo-purge ; xo --space 4"
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write . && eslint --fix .",
+    "test": "node --test test/*.test.js",
+    "test:watch": "node --test --watch test/*.test.js",
+    "fixtures": "node tools/fixtures-from-paramsets.js"
   },
   "repository": {
     "type": "git",
@@ -30,26 +37,24 @@
     "url": "https://github.com/hobbyquaker/hm-simulator/issues"
   },
   "homepage": "https://github.com/hobbyquaker/hm-simulator#readme",
+  "files": [
+    "index.js",
+    "sim.js",
+    "sim.mjs",
+    "lib/",
+    "data/",
+    "behaviors/",
+    "tools/"
+  ],
   "dependencies": {
-    "async": "^3.1.0",
-    "binrpc": "^3.0.1",
-    "body-parser": "^1.18.3",
-    "express": "^4.16.4",
-    "homematic-xmlrpc": "^1.0.2",
-    "request": "^2.88.0",
-    "yalm": "^4.0.2"
+    "binrpc": "^4.2.0",
+    "homematic-xmlrpc": "^2.0.0"
   },
   "devDependencies": {
-    "camo-purge": "^1.0.1",
-    "xo": "^0.25.3"
-  },
-  "xo": {
-    "space": 4,
-    "rules": {
-      "no-cond-assign": "warn",
-      "no-case-declarations": "warn",
-      "no-constant-condition": "warn",
-      "no-unused-vars": "warn"
-    }
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "^3.9.6"
   }
 }

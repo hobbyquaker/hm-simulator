@@ -8,78 +8,69 @@
 
 > Simulates (partly) a Homematic CCU
 
-
 ## Installation
 
 Prerequisites: [Node.js](https://nodejs.org) >= 6.0
 
 `npm install -g hm-simulator`
 
-
 ## What for?
 
 This can be used for automated tests of software connecting to a Homematic CCU
 
-
 ## What does it do?
 
-**Warning: This is far away from a complete simulation and still work in progress** Until now I'm only implementing what 
+**Warning: This is far away from a complete simulation and still work in progress** Until now I'm only implementing what
 I needed for basic tests of [hm2mqtt.js](https://github.com/hobbyquaker/hm2mqtt.js).
 
-* Simulated rfd, [binrpc](https://github.com/hobbyquaker/binrpc) only, interface on port 2001
-* Simulated hmipserver, xmlrpc only, interface on port 2010
-
+- Simulated rfd, [binrpc](https://github.com/hobbyquaker/binrpc) only, interface on port 2001
+- Simulated hmipserver, xmlrpc only, interface on port 2010
 
 ### RPC methods implemented until now
 
 **incoming:**
 
-* init 
-* ping
-* system.listMethods
-* getParamsetDescription
-
+- init
+- ping
+- system.listMethods
+- getParamsetDescription
 
 **outgoing:**
 
-* listDevices
-* newDevices 
-* deleteDevices 
-* event
-* system.multicall 
-
+- listDevices
+- newDevices
+- deleteDevices
+- event
+- system.multicall
 
 ### Scripting
 
 In the behaviors directory are two example scripts:
 
- * `virtual-button-press.js` triggers a `PRESS_SHORT` on `BidCoS-RF:1` every 5 seconds.
- * `window-open-close.js` opens and closes `0000D3C98C9233:1` every 30 seconds.
-
+- `virtual-button-press.js` triggers a `PRESS_SHORT` on `BidCoS-RF:1` every 5 seconds.
+- `window-open-close.js` opens and closes `0000D3C98C9233:1` every 30 seconds.
 
 ## Todo
 
-* bugfixes...
-* extend script api
-* more behavior examples
-* more rfd devices
-* correct error responses to invalid methodCalls
-* incoming getParamset
-* MASTER, MAINTENANCE and LINK paramsets
-* service messages, incoming getServiceMessages
-* incoming putParamset
-* rega listener on port 8181, rega script mocking 
-* ... many more... ;)
-
+- bugfixes...
+- extend script api
+- more behavior examples
+- more rfd devices
+- correct error responses to invalid methodCalls
+- incoming getParamset
+- MASTER, MAINTENANCE and LINK paramsets
+- service messages, incoming getServiceMessages
+- incoming putParamset
+- rega listener on port 8181, rega script mocking
+- ... many more... ;)
 
 ## Contributing
 
 Pull Request welcome! :-)
 
-
 ## License
 
-MIT 
+MIT
 Copyright (c) 2017 Sebastian Raff
 
 [mit-badge]: https://img.shields.io/badge/License-MIT-blue.svg?style=flat

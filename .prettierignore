@@ -1,0 +1,6 @@
+node_modules
+coverage
+package-lock.json
+data/paramset-descriptions.json
+data/devices-rfd.json
+data/devices-hmip.json
