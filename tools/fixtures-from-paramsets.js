@@ -141,6 +141,13 @@ function channelOrder(type, channelTypes) {
         }
     };
 
+    // `channels` is the exact layout of a real device, taken from a listDevices dump: entry n is
+    // channel n. A channel type the description dump does not know is dropped so that the fixture
+    // stays consistent with itself.
+    if (layout && Array.isArray(layout.channels)) {
+        return layout.channels.filter((name) => channelTypes.has(name));
+    }
+
     if (layout) {
         for (const name of layout.order) {
             if (channelTypes.has(name)) {

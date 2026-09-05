@@ -1,17 +1,30 @@
 {
   "_comment": [
     "Channel layouts for tools/fixtures-from-paramsets.js.",
-    "A paramset description dump only knows channel *types*, never channel indexes, so the",
-    "indexes below are synthesised. They are consistent within a fixture (CHILDREN, PARENT and",
-    "INDEX always agree) but they are not guaranteed to match the real device. Correct an entry",
-    "from a listDevices dump of the real hardware when one is available.",
+    "A paramset description dump only knows channel *types*, never channel indexes.",
     "",
-    "'order' lists the channel types after MAINTENANCE (which is always channel 0), 'counts' how",
-    "many channels of that type follow. Device types without an entry get one channel per channel",
-    "type, in the order they appear in the dump."
+    "'channels' is the real layout of the device, entry n being channel n, read from a",
+    "listDevices dump of the hardware. The entries that have one were measured on the",
+    "Homematic Manager lab CCUs (firmware 3.89.8) on 2026-09-05, roadmap task 6.",
+    "",
+    "Without 'channels', the layout is synthesised from 'order' (the channel types after",
+    "MAINTENANCE, which is always channel 0) and 'counts' (how many of each). That is",
+    "consistent within a fixture (CHILDREN, PARENT and INDEX always agree) but not",
+    "guaranteed to match the real device. Device types without an entry get one channel",
+    "per channel type, in the order they appear in the dump."
   ],
-  "HM-LC-Sw1-Pl": {"order": ["SWITCH"], "counts": {"SWITCH": 1}},
-  "HM-LC-Sw1-Pl-2": {"order": ["SWITCH"], "counts": {"SWITCH": 1}},
+  "HM-LC-Sw1-Pl": {
+    "order": ["SWITCH"],
+    "counts": {
+      "SWITCH": 1
+    }
+  },
+  "HM-LC-Sw1-Pl-2": {
+    "order": ["SWITCH"],
+    "counts": {
+      "SWITCH": 1
+    }
+  },
   "HM-CC-RT-DN": {
     "order": [
       "CLIMATECONTROL_RT_TRANSCEIVER",
@@ -30,28 +43,99 @@
       "REMOTECONTROL_RECEIVER": 1
     }
   },
-  "HM-PB-2-WM55": {"order": ["KEY"], "counts": {"KEY": 2}},
-  "HM-SEC-SC-2": {"order": ["SHUTTER_CONTACT"], "counts": {"SHUTTER_CONTACT": 1}},
-  "HmIP-PDT": {
-    "order": ["DIMMER_TRANSMITTER", "DIMMER_VIRTUAL_RECEIVER", "DIMMER_WEEK_PROFILE", "KEY_TRANSCEIVER"],
+  "HM-PB-2-WM55": {
+    "order": ["KEY"],
     "counts": {
-      "DIMMER_TRANSMITTER": 1,
-      "DIMMER_VIRTUAL_RECEIVER": 3,
-      "DIMMER_WEEK_PROFILE": 1,
-      "KEY_TRANSCEIVER": 1
+      "KEY": 2
     }
   },
-  "HmIP-WRC2": {"order": ["KEY_TRANSCEIVER"], "counts": {"KEY_TRANSCEIVER": 2}},
+  "HM-SEC-SC-2": {
+    "order": ["SHUTTER_CONTACT"],
+    "counts": {
+      "SHUTTER_CONTACT": 1
+    }
+  },
+  "HmIP-PDT": {
+    "channels": [
+      "MAINTENANCE",
+      "KEY_TRANSCEIVER",
+      "DIMMER_TRANSMITTER",
+      "DIMMER_VIRTUAL_RECEIVER",
+      "DIMMER_VIRTUAL_RECEIVER",
+      "DIMMER_VIRTUAL_RECEIVER",
+      "DIMMER_WEEK_PROFILE"
+    ]
+  },
+  "HmIP-WRC2": {
+    "channels": ["MAINTENANCE", "KEY_TRANSCEIVER", "KEY_TRANSCEIVER"]
+  },
   "HmIPW-DRS8": {
-    "order": ["SWITCH_TRANSMITTER", "SWITCH_VIRTUAL_RECEIVER", "SWITCH_WEEK_PROFILE"],
-    "counts": {"SWITCH_TRANSMITTER": 8, "SWITCH_VIRTUAL_RECEIVER": 8, "SWITCH_WEEK_PROFILE": 8}
+    "channels": [
+      "MAINTENANCE",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_TRANSMITTER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_VIRTUAL_RECEIVER",
+      "SWITCH_WEEK_PROFILE"
+    ]
   },
   "HmIPW-DRI16": {
-    "order": ["MULTI_MODE_INPUT_TRANSMITTER", "ALARM_COND_SWITCH_TRANSMITTER"],
-    "counts": {"MULTI_MODE_INPUT_TRANSMITTER": 16, "ALARM_COND_SWITCH_TRANSMITTER": 1}
+    "channels": [
+      "MAINTENANCE",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "MULTI_MODE_INPUT_TRANSMITTER",
+      "ALARM_COND_SWITCH_TRANSMITTER"
+    ]
   },
   "HmIPW-DRAP": {
-    "order": ["ACCESSPOINT_GENERIC_RECEIVER"],
-    "counts": {"ACCESSPOINT_GENERIC_RECEIVER": 1}
+    "channels": ["MAINTENANCE", "ACCESSPOINT_GENERIC_RECEIVER", "ACCESSPOINT_GENERIC_RECEIVER"]
+  },
+  "HM-CC-TC": {
+    "channels": ["MAINTENANCE", "WEATHER", "CLIMATECONTROL_REGULATOR", "WINDOW_SWITCH_RECEIVER"]
+  },
+  "HM-Sec-SC": {
+    "channels": ["MAINTENANCE", "SHUTTER_CONTACT"]
   }
 }
