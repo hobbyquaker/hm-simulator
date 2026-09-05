@@ -65,6 +65,24 @@ describe('interface and service methods', () => {
         assert.equal(await rfd('getInstallMode', []), 0);
     });
 
+    it('remembers the temporary key a BidCos pairing is to use (setTempKey)', async () => {
+        assert.equal(sim.getTempKey('rfd'), '');
+        assert.equal(await rfd('setTempKey', ['geheim']), '');
+        assert.equal(sim.getTempKey('rfd'), 'geheim');
+
+        // an application sends it before the install mode; the key applies to what follows
+        await rfd('setInstallMode', [true, 60, 1]);
+        assert.equal(sim.getTempKey('rfd'), 'geheim');
+        await rfd('setInstallMode', [false]);
+
+        // the empty string is how it goes back to the interface's own key
+        assert.equal(await rfd('setTempKey', ['']), '');
+        assert.equal(sim.getTempKey('rfd'), '');
+
+        // the default fault table is hmipserver's (see lib/faults.js); a bidcos table answers -1
+        assert.equal((await rfd('setTempKey', [42])).faultCode, -321);
+    });
+
     it('lets a scenario script new devices into the install mode', async () => {
         sim.scriptNewDevices(
             'rfd',

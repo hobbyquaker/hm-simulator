@@ -37,7 +37,7 @@ messages. rfd and hmipserver start by default, the others when their port is con
 | devices     | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `setInstallMode`, `getInstallMode`                     |
 | paramsets   | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`       |
 | links       | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                      |
-| interface   | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`                                                 |
+| interface   | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only)                     |
 | maintenance | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware` (the last two are stubs that record the call) |
 
 **Outgoing RPC calls** to every registered logic layer: `listDevices`, `newDevices`,
@@ -317,7 +317,8 @@ hm-simulator [options]
 - Links: `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`,
   `activateLinkParamset`, and link paramsets addressed by the peer's address.
 - Interface and service methods: `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`,
-  `getServiceMessages`, `setInstallMode`/`getInstallMode` with scripted `newDevices`,
+  `getServiceMessages`, `setInstallMode`/`getInstallMode` with scripted `newDevices`, `setTempKey`
+  (the BidCos processes only; `sim.getTempKey(iface)` reads back what was set),
   `deleteDevice`, `replaceDevice`, `reportValueUsage`, `updateFirmware`, `installFirmware`,
   `clearConfigCache`, `restoreConfigToDevice`, `determineParameter`, `getDeviceDescription`,
   `getValue`, `system.methodHelp`, `system.multicall`.
