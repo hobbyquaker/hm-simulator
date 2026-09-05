@@ -31,9 +31,7 @@ function freePort() {
  * @returns {Promise<object>} {sim, binrpcPort, xmlrpcPort, ports}
  */
 async function startSim(options = {}) {
-    const binrpcListenPort = await freePort();
-    const xmlrpcListenPort = await freePort();
-
+    // port 0: the tests run in parallel, so the ports have to come from the OS
     const sim = new HmSim({
         devices: fixtures.devices(),
         paramsetDescriptions: fixtures.paramsetDescriptions,
@@ -41,15 +39,15 @@ async function startSim(options = {}) {
         ...options,
         config: {
             listenAddress: '127.0.0.1',
-            binrpcListenPort,
-            xmlrpcListenPort,
+            binrpcListenPort: 0,
+            xmlrpcListenPort: 0,
             ...options.config,
         },
     });
 
     await sim.whenReady();
 
-    return {sim, binrpcPort: binrpcListenPort, xmlrpcPort: xmlrpcListenPort};
+    return {sim, binrpcPort: sim.ports.rfd, xmlrpcPort: sim.ports.hmip, ports: sim.ports};
 }
 
 function promisify(client) {

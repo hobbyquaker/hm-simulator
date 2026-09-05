@@ -4,7 +4,7 @@ const {describe, it, before, after} = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 
-const {startSim, freePort} = require('./helpers.js');
+const {startSim} = require('./helpers.js');
 
 function post(port, body) {
     return new Promise((resolve, reject) => {
@@ -28,10 +28,9 @@ describe('ReGa mock', () => {
     let port;
 
     before(async () => {
-        port = await freePort();
         const started = await startSim({
             rega: {
-                port,
+                port: 0,
                 listenAddress: '127.0.0.1',
                 channels: [
                     {id: 1000, address: 'ABC0000001', name: 'Steckdose'},
@@ -45,6 +44,7 @@ describe('ReGa mock', () => {
             },
         });
         sim = started.sim;
+        port = sim.regaSim.port;
     });
 
     after(() => sim.close());

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const binrpc = require('binrpc');
 const xmlrpc = require('homematic-xmlrpc');
 
-const {startSim, binrpcCall, xmlrpcCall, freePort, waitFor, fixtures} = require('./helpers.js');
+const {startSim, binrpcCall, xmlrpcCall, waitFor, fixtures} = require('./helpers.js');
 
 /** A logic layer: a callback server that records what the simulator calls on it. */
 function logicLayer(server) {
@@ -43,12 +43,17 @@ describe('init and the outgoing calls', () => {
         rfd = binrpcCall(started.binrpcPort);
         hmip = xmlrpcCall(started.xmlrpcPort);
 
-        binrpcCallbackPort = await freePort();
-        binrpcCallbackServer = binrpc.createServer({host: '127.0.0.1', port: binrpcCallbackPort});
+        // port 0 everywhere: the test files run in parallel
+        binrpcCallbackServer = await new Promise((resolve) => {
+            const server = binrpc.createServer({host: '127.0.0.1', port: 0}, () => resolve(server));
+        });
+        binrpcCallbackPort = binrpcCallbackServer.server.address().port;
         binrpcCalls = logicLayer(binrpcCallbackServer);
 
-        xmlrpcCallbackPort = await freePort();
-        xmlrpcCallbackServer = xmlrpc.createServer({host: '127.0.0.1', port: xmlrpcCallbackPort});
+        xmlrpcCallbackServer = await new Promise((resolve) => {
+            const server = xmlrpc.createServer({host: '127.0.0.1', port: 0}, () => resolve(server));
+        });
+        xmlrpcCallbackPort = xmlrpcCallbackServer.httpServer.address().port;
         xmlrpcCalls = logicLayer(xmlrpcCallbackServer);
     });
 
