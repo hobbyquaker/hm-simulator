@@ -38,10 +38,11 @@ messages. rfd and hmipserver start by default, the others when their port is con
 | paramsets   | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`       |
 | links       | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                      |
 | interface   | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only)                     |
+| teams       | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                   |
 | maintenance | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware` (the last two are stubs that record the call) |
 
 **Outgoing RPC calls** to every registered logic layer: `listDevices`, `newDevices`,
-`deleteDevices`, `event`, `system.multicall`.
+`deleteDevices`, `updateDevice` (after `setTeam`), `event`, `system.multicall`.
 
 **ReGa** (`rega.exe` on port 8181): the scripts of the
 [homematic-rega](https://github.com/hobbyquaker/homematic-rega) client - `getChannels`,
@@ -299,6 +300,16 @@ hm-simulator [options]
 - Node >= 20.19. `binrpc` 4 and `homematic-xmlrpc` 2 are the only runtime dependencies.
 
 ## Changelog
+
+### Unreleased
+
+- Smoke detector teams on the BidCos interfaces: `listTeams` and `setTeam`. A channel with a
+  `TEAM_TAG` is in the team its `TEAM` names, a pseudo device `*<serial>` whose team channel lists
+  the members in `TEAM_CHANNELS`; `setTeam(channel, team)` moves it and deletes a team nobody is
+  left in, `setTeam(channel, '')` puts it back into a team of its own, created like the one it
+  left (`newDevices`, `deleteDevices`, `updateDevice` to the logic layers). The shape is rfd's
+  as Homematic Manager task 58 read it from a CCU3; when rfd deletes and creates the team devices
+  is the simulator's model, not a measurement.
 
 ### 1.0.0
 
