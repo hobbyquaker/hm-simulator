@@ -395,6 +395,52 @@ const sim = new HmSim({devices: lab.devices, paramsetDescriptions: fixture.param
 It is also where the oddities live that only real hardware produces - the CCU's own `HmIP-RCV-50`
 sends a trailing **empty string** in `CHILDREN`, for instance.
 
+`data/fixtures/lab-2026-09.json` is the complete one: four test systems (openccu-lite, the
+interface processes of OpenCCU 3.89.11) dumped with `tools/dump-ccu.js` on 2026-09-29 and merged -
+`listDevices`, the paramset descriptions of exactly the firmware every device runs (MASTER, VALUES,
+SERVICE, LINK; `getMissingParamsetDescriptions()` is empty without the fallback), the direct links
+and `listBidcosInterfaces`. Its devices:
+
+| Interface    | Device types                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BidCos-RF    | HM-RCV-50 (the central, `BidCoS-RF:0..50`), HM-CC-TC, HM-Sec-SC, HM-LC-Sw1-Pl-2; five radio interfaces (types `CCU2`, `USB Interface`, `HMLGW2`)                               |
+| BidCos-Wired | HMW-RCV-50 (the central only)                                                                                                                                                  |
+| HmIP-RF      | HmIP-RCV-50 (the central), the radio modules RPI-RF-MOD and HmIP-RFUSB (twice), HmIP-HAP, HmIP-BBL, HMIP-WRC2 (three firmwares), HmIP-PDT, HmIPW-DRAP, HmIPW-DRI16, HmIPW-DRS8 |
+
+Links: WRC2s on the PDT, the BBL and a DRS8 channel, the PDT's and the BBL's internal links, and
+the Sw1's one on BidCos-RF. A real
+hmipserver lists one radio module; the merged set lists three, and `listBidcosInterfaces` names
+the first as the HmIP radio (its `ADDRESS` is `3014F711A0` + that module's device address, as on a
+CCU). Serials are anonymised consistently in their own shape - BidCos `LAB0000001`, HmIP
+`00000000000004` - link names are empty, and nothing else is changed. The file is a device file
+for the command line (`--devices`, add `--wired-port 0` or a port for BidCos-Wired) and carries
+the constructor options of the same names:
+
+```js
+const lab = require('hm-simulator/data/fixtures/lab-2026-09.json');
+const sim = new HmSim({
+  devices: structuredClone(lab.devices), // the simulator changes the lists it is given
+  paramsetDescriptions: lab.paramsetDescriptions,
+  links: structuredClone(lab.links),
+  bidcosInterfaces: lab.bidcosInterfaces,
+  config: {binrpcListenPort: 0, xmlrpcListenPort: 0, wiredListenPort: 0},
+});
+```
+
+`tools/dump-ccu.js` (in the repository, not in the package) makes such a file from any CCU:
+
+```
+node tools/dump-ccu.js --rfd xmlrpc_bin://127.0.0.1:2001 --hmip xmlrpc://127.0.0.1:2010 \
+    --virtual xmlrpc://127.0.0.1:9292/groups --out my-ccu.json
+```
+
+Every interface may be given more than once to merge several systems; `--types` keeps only the
+device types listed, `--keep-serials` switches the anonymisation off, and `--help` lists the rest.
+It only reads (`listDevices`, `getParamsetDescription`, `getLinks`, `listBidcosInterfaces`), and it
+refuses to write a file in which anything shaped like a serial, an HmIP address or an SGTIN is left
+that it did not put there itself. The rest of a CCU's identity - host names, addresses, keys - is
+never read.
+
 ## Command line
 
 ```
@@ -412,8 +458,9 @@ hm-simulator [options]
   --ports-json <file|->     once every server listens, write the ports as JSON to the file, or
                             as one line to stdout with "-" (the log then goes to stderr)
   --config <file>           constructor options as a .json or .js file; the flags override it
-  --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions}, such
-                            as data/fixtures/devices.json; default: the bundled rfd and hmip lists
+  --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions, links,
+                            bidcosInterfaces}, such as data/fixtures/lab-2026-09.json; default:
+                            the bundled rfd and hmip lists
   --tls                     serve the XML-RPC servers over TLS with a generated certificate
   --tls-cert-out <file>     write that certificate (PEM) to the file
   --auth <user:password>    HTTP basic auth for the XML-RPC servers and ReGa
@@ -491,6 +538,12 @@ curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "P
 
 ### Unreleased
 
+- `data/fixtures/lab-2026-09.json`: the devices of four test systems with the paramset
+  descriptions of their exact firmware, their direct links and radio modules - the CCU centrals,
+  RPI-RF-MOD, HmIP-RFUSB, HmIP-HAP, HmIP-BBL, HMIP-WRC2, HmIP-PDT, HmIPW-DRAP/-DRI16/-DRS8,
+  HM-CC-TC, HM-Sec-SC, HM-LC-Sw1-Pl-2 - anonymised. `tools/dump-ccu.js` makes such a fixture from
+  any CCU (read only, anonymised unless told otherwise). A device file given to `--devices` brings
+  its `links` and `bidcosInterfaces` along.
 - The calls openccu-lite's daemon makes: `logLevel` (rfd and hs485d answer the level, 5 until set;
   hmipserver an empty string), `changeKey` (rfd, hmipserver; recorded in `sim.keyChanges`) and
   `refreshDeployedDeviceFirmwareList` (rfd, hmipserver; recorded in

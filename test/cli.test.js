@@ -196,6 +196,19 @@ describe('command line: devices, config, TLS, auth', () => {
         await stop(cli.child);
     });
 
+    it('loads a dumped fixture with its links and radio modules', async () => {
+        const file = path.join(__dirname, '..', 'data', 'fixtures', 'lab-2026-09.json');
+        const lab = JSON.parse(fs.readFileSync(file, 'utf8'));
+        const cli = await startCli(['--devices', file, '--wired-port', '0', '--no-rega']);
+        const hmip = xmlrpcCall(cli.ports.hmip);
+        assert.equal((await hmip('getLinks', [])).length, lab.links.hmip.length);
+        assert.deepEqual(await hmip('listBidcosInterfaces', []), lab.bidcosInterfaces.hmip);
+        const wired = binrpcCall(cli.ports.wired);
+        assert.equal((await wired('listDevices', [])).length, lab.devices.wired.devices.length);
+        wired.close();
+        await stop(cli.child);
+    });
+
     it('takes the constructor options from a config file, paths relative to it, flags on top', async () => {
         const config = path.join(temporary, 'sim.json');
         fs.writeFileSync(

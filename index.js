@@ -26,8 +26,9 @@ Usage: hm-simulator [options]
   --ports-json <file|->     once every server listens, write the ports as JSON to the file, or
                             as one line to stdout with "-" (the log then goes to stderr)
   --config <file>           constructor options as a .json or .js file; the flags override it
-  --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions}, such
-                            as data/fixtures/devices.json; default: the bundled rfd and hmip lists
+  --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions, links,
+                            bidcosInterfaces}, such as data/fixtures/lab-2026-09.json; default:
+                            the bundled rfd and hmip lists
   --tls                     serve the XML-RPC servers over TLS with a generated certificate
   --tls-cert-out <file>     write that certificate (PEM) to the file
   --auth <user:password>    HTTP basic auth for the XML-RPC servers and ReGa
@@ -120,11 +121,30 @@ function readJson(file) {
  * A device file: `{devices: {rfd, hmip, ...}, paramsetDescriptions}` (a fixture), or only the
  * `{rfd, hmip, ...}` part.
  */
+/**
+ * A device file: either `{<iface>: {devices}}` or a fixture `{devices, paramsetDescriptions, links,
+ * bidcosInterfaces}` as data/fixtures/ and tools/dump-ccu.js have it.
+ */
 function loadDevices(file) {
     const content = readJson(file);
     return content.devices && !Array.isArray(content.devices)
-        ? {devices: content.devices, paramsetDescriptions: content.paramsetDescriptions}
+        ? {
+              devices: content.devices,
+              paramsetDescriptions: content.paramsetDescriptions,
+              links: content.links,
+              bidcosInterfaces: content.bidcosInterfaces,
+          }
         : {devices: content};
+}
+
+/** Takes what a device file brings along, unless the options already say it. */
+function applyDeviceFile(options, loaded, override) {
+    options.devices = loaded.devices;
+    for (const key of ['paramsetDescriptions', 'links', 'bidcosInterfaces']) {
+        if (loaded[key] && (override || options[key] === undefined)) {
+            options[key] = loaded[key];
+        }
+    }
 }
 
 function loadConfig(file) {
@@ -139,11 +159,7 @@ function loadConfig(file) {
     const base = path.dirname(absolute);
     // devices and paramsetDescriptions may be paths, relative to the file
     if (typeof options.devices === 'string') {
-        const loaded = loadDevices(path.resolve(base, options.devices));
-        options.devices = loaded.devices;
-        if (loaded.paramsetDescriptions && options.paramsetDescriptions === undefined) {
-            options.paramsetDescriptions = loaded.paramsetDescriptions;
-        }
+        applyDeviceFile(options, loadDevices(path.resolve(base, options.devices)), false);
     }
     if (typeof options.paramsetDescriptions === 'string') {
         options.paramsetDescriptions = readJson(path.resolve(base, options.paramsetDescriptions));
@@ -157,11 +173,7 @@ function loadConfig(file) {
 const options = args.config ? loadConfig(args.config) : {};
 
 if (args.devices) {
-    const loaded = loadDevices(path.resolve(args.devices));
-    options.devices = loaded.devices;
-    if (loaded.paramsetDescriptions) {
-        options.paramsetDescriptions = loaded.paramsetDescriptions;
-    }
+    applyDeviceFile(options, loadDevices(path.resolve(args.devices)), true);
 }
 if (!options.devices) {
     options.devices = {
