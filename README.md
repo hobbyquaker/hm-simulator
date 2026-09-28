@@ -25,9 +25,17 @@ Or, as a standalone process, `npm install -g hm-simulator` and then `hm-simulato
 
 ## What is simulated
 
-**Interfaces.** rfd (binrpc), hmipserver (xmlrpc), BidCos-Wired (binrpc), VirtualDevices (xmlrpc,
-path `/groups`) and CUxD (binrpc). Each has its own devices, values, paramsets, links and service
-messages. rfd and hmipserver start by default, the others when their port is configured.
+**Interfaces.** rfd (binrpc and xmlrpc), hmipserver (xmlrpc), BidCos-Wired (binrpc and xmlrpc),
+VirtualDevices (xmlrpc, path `/groups`) and CUxD (binrpc). Each has its own devices, values,
+paramsets, links and service messages. rfd and hmipserver start by default, the others when their
+port is configured.
+
+rfd and BidCos-Wired answer **BIN-RPC and XML-RPC on the same port**, as on a CCU: a connection
+that starts with the bytes `Bin` is BIN-RPC, anything else XML-RPC over HTTP. A client may register
+over one and ask for callbacks in the other (`init('xmlrpc_bin://…')` gets BIN-RPC callbacks,
+`init('http://…')` XML-RPC ones). With `tls` the XML-RPC half is HTTPS only and BIN-RPC stays plain;
+basic auth applies to the XML-RPC half. `interfaces: {rfd: {protocols: ['binrpc']}}` gives the
+BIN-RPC-only server of 1.1 back, `['xmlrpc']` the other half.
 
 **Incoming RPC methods.**
 
@@ -170,6 +178,7 @@ new HmSim({
 | `configPendingOnWrite`         | `false`                                                                        | raise `CONFIG_PENDING` for _every_ accepted MASTER write. Implied by `'bidcos'`, which raises it for every write that changes something                                                                                                           |
 | `configPendingDelay`           | `0`                                                                            | milliseconds after which a non-sticky `CONFIG_PENDING` clears itself - the stand-in for the device taking the configuration. The lab measured 160-180 s on a thermostat that transmits regularly, and "until someone opens the door" on a contact |
 | `serviceMessagesEmptyAsString` | `false`                                                                        | answer `getServiceMessages` with `''` instead of `[]` when nothing is pending, which is what rfd really does                                                                                                                                      |
+| `protocols`                    | `['binrpc', 'xmlrpc']` for `rfd` and `wired`                                   | what the port of a BidCos interface answers, see [What is simulated](#what-is-simulated)                                                                                                                                                          |
 
 | `configPendingMode` | what a `putParamset MASTER` does                                                                                                                                                         |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -320,6 +329,10 @@ hm-simulator [options]
 
 ### Unreleased
 
+- rfd and BidCos-Wired answer BIN-RPC and XML-RPC on the same port, as on a CCU, so a client
+  that talks XML-RPC to rfd can be tested too; the callbacks follow the URL a client registered
+  with, whichever protocol it registered over. With `tls` the XML-RPC half is HTTPS, BIN-RPC stays
+  plain. `interfaces.<iface>.protocols` narrows a port to one of them.
 - A device whose firmware has no paramset description uses the description of the nearest
   firmware of the same type and `VERSION` instead of answering `-2 Invalid device` for every
   channel `listDevices` reports; the bundled CCU virtual remote (`HM-RCV-50` 2.27.8,
