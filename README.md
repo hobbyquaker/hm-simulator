@@ -88,6 +88,7 @@ run tests in parallel.
 | `log`                      | silent                                               | object with `debug`, `info`, `warn`, `error`                                            |
 | `devices`                  | `{rfd: {devices: []}, hmip: {devices: []}}`          | device descriptions per interface                                                       |
 | `paramsetDescriptions`     | the bundled 8.4 MB `data/paramset-descriptions.json` | replaces the bundled descriptions                                                       |
+| `paramsetFallback`         | `true`                                               | a firmware without a description uses the nearest one, see [Fixtures](#fixtures)        |
 | `config.listenAddress`     | all interfaces                                       |                                                                                         |
 | `config.binrpcListenPort`  | –                                                    | rfd                                                                                     |
 | `config.xmlrpcListenPort`  | –                                                    | hmipserver                                                                              |
@@ -122,6 +123,7 @@ await sim.dropConnection('rfd'); // interface process restart
 sim.getWriteLog(); // every accepted putParamset: {iface, address, paramset, values, rejected, ts}
 sim.getConfigPending('rfd'); // [{address, sticky}]
 sim.getPoisonedChannels('hmip'); // channels whose stored MASTER has a parameter they do not have
+sim.getMissingParamsetDescriptions(); // [{iface, key, usedKey}]: paramsets without an exact description
 sim.api.emit('setValue', 'rfd', 'ABC0000001:1', 'STATE', true); // as a behaviour script would
 ```
 
@@ -227,6 +229,21 @@ new HmSim({faults: {unknownParameter: {faultCode: -4, faultString: 'Unknown para
 `data/devices-rfd.json` and `data/devices-hmip.json` (the historical device lists) and
 `data/paramset-descriptions.json` (1855 descriptions) ship with the package and are unchanged.
 
+A description is looked up by `<interface>/<type>/<firmware>/<version>/<channel type>/<paramset>`,
+and a device reports the firmware it runs - which a description set often does not have (the
+bundled `HM-RCV-50` has firmware 2.27.8, the bundled descriptions start at 2.31.25). Such a device
+uses the description of the **nearest firmware** of the same type and `VERSION`: the highest one at
+or below its own, else the lowest one above it; firmware compared numerically part by part, a
+trailing build date (`3.41.11.20181222`) last. Each substitution is logged once at `warn`. A type
+with no description at all still answers `-2` for its paramsets. `paramsetFallback: false` keeps
+the exact keys only, and `sim.getMissingParamsetDescriptions()` lists every paramset a device
+announces in `PARAMSETS` that has no exact description, with the key used instead (`usedKey`,
+`null` when there is none) - an empty list means a fixture is complete:
+
+```js
+assert.deepEqual(sim.getMissingParamsetDescriptions(), []);
+```
+
 `data/fixtures/devices.json` is generated from node-red-contrib-ccu's `paramsets.json` and contains
 real descriptions for HmIP-PDT, HmIPW-DRS8, HmIPW-DRI16, HmIPW-DRAP, HM-LC-Sw1-Pl and HM-CC-RT-DN:
 
@@ -300,6 +317,15 @@ hm-simulator [options]
 - Node >= 20.19. `binrpc` 4 and `homematic-xmlrpc` 2 are the only runtime dependencies.
 
 ## Changelog
+
+### Unreleased
+
+- A device whose firmware has no paramset description uses the description of the nearest
+  firmware of the same type and `VERSION` instead of answering `-2 Invalid device` for every
+  channel `listDevices` reports; the bundled CCU virtual remote (`HM-RCV-50` 2.27.8,
+  `BidCoS-RF:1..50`) works again. `paramsetFallback: false` switches it off,
+  `sim.getMissingParamsetDescriptions()` lists what is not matched exactly (reported in #1 by
+  @Hypnos3, cause found by @foxriver76).
 
 ### 1.1.0
 
