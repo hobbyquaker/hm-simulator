@@ -63,8 +63,8 @@ parameter, wrong type, out of range, unknown link. Over xmlrpc as an XML-RPC fau
 a message of type `0xff` with a `faultCode`/`faultString` struct - see
 [Fault codes](#fault-codes-measured) below.
 
-What is **not** simulated: the actual radio protocol, firmware behaviour, duty cycle, the CCU's web
-UI and JSON-API, and anything a device does on its own beyond what a behaviour script or the
+What is **not** simulated: the actual radio protocol, firmware behaviour beyond the update states
+of [Device and radio health](#device-and-radio-health), the CCU's web UI and JSON-API, and anything a device does on its own beyond what a behaviour script or the
 scenario API makes it do.
 
 ## Usage
@@ -136,6 +136,8 @@ sim.fireEvents('rfd', [[address, 'WORKING', true], ...], {batch: 10}); // a burs
 await sim.restartInterface('hmip', {downMs: 2000, forgetClients: true}); // see below
 sim.injectFault({iface: 'rfd', method: 'setValue', fault: 'notReachable'}); // see below
 sim.getCallbackLog(); // [{iface, client, method, sentAt, answeredAt, error}]
+sim.setReachable('rfd', 'ABC0000001', false); // see Device and radio health
+sim.schedule([{at: 1000, call: 'setReachable', args: ['rfd', 'ABC0000001', true]}]); // a timeline
 sim.api.emit('setValue', 'rfd', 'ABC0000001:1', 'STATE', true); // as a behaviour script would
 ```
 
@@ -188,6 +190,8 @@ new HmSim({
 | `pingDelay`                    | `0`                                                                            | milliseconds between `ping` and its `PONG` event                                                                                                                                                                                                  |
 | `startDelay`                   | `0`                                                                            | milliseconds after `whenReady()` until the port accepts connections: a process that starts late (`sim.ports` knows the port from the start)                                                                                                       |
 | `deliveryTimeout`              | `10000`                                                                        | `'measured'` BidCos only: a client that does not answer a callback within this time is dropped                                                                                                                                                    |
+| `unreachWrites`                | `'accept'`                                                                     | what `setValue`/`putParamset` to an unreachable device answer: `'accept'`, or `'fault'` (`notReachable`). The simulator's model, not a measurement                                                                                                |
+| `firmwareUpdateDelay`          | `0`                                                                            | milliseconds per step of a firmware update, see [Device and radio health](#device-and-radio-health)                                                                                                                                               |
 
 | `configPendingMode` | what a `putParamset MASTER` does                                                                                                                                                         |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -241,6 +245,42 @@ Every entry can still be replaced individually:
 ```js
 new HmSim({faults: {unknownParameter: {faultCode: -4, faultString: 'Unknown parameter'}}});
 ```
+
+## Device and radio health
+
+What the devices and the radio report over time - the service messages, levels and update states a
+client renders and reacts to:
+
+```js
+sim.setReachable('rfd', 'ABC0000001', false); // UNREACH (+ STICKY_UNREACH on BidCos) on :0
+sim.setReachable('rfd', 'ABC0000001', true); // UNREACH clears, STICKY_UNREACH stays for the client
+sim.setLowBattery('hmip', '0001D3C99C1234', true); // LOW_BAT or LOWBAT, whichever :0 has
+sim.setDutyCycle('rfd', 42); // listBidcosInterfaces' DUTY_CYCLE
+sim.setDutyCycle('hmip', 17); // ... and DUTY_CYCLE_LEVEL on the radio module's :0
+sim.setCarrierSense('hmip', 8); // CARRIER_SENSE_LEVEL, the same way
+sim.offerFirmware('hmip', '0001D3C99C1234', '1.6.0'); // a firmware update becomes available
+await sim.schedule([
+  {at: 1000, call: 'setReachable', args: ['rfd', 'ABC0000001', false]},
+  {at: 3000, call: 'setReachable', args: ['rfd', 'ABC0000001', true]},
+]);
+```
+
+- A datapoint the `:0` channel's description has is stored and sent as the description says, and
+  counts as a service message by its `FLAGS`; one it does not have is sent as an event and raised
+  with `setServiceMessage`. `STICKY_UNREACH` stays after the device is back until a client writes
+  it `false`, as rfd does. A write to an unreachable device is accepted unless `unreachWrites` is
+  `'fault'`.
+- The radio module is the HmIP device whose address is the last 14 characters of the interface's
+  address in `listBidcosInterfaces` (its SGTIN), or a device of a radio module's type
+  (`RPI-RF-MOD`, `HmIP-RFUSB`); without one only `listBidcosInterfaces` changes.
+- `offerFirmware` sets `AVAILABLE_FIRMWARE`, `FIRMWARE_UPDATE_STATE: 'NEW_FIRMWARE_AVAILABLE'` and
+  `UPDATABLE` in the device description and `UPDATE_PENDING` on `:0`, and sends `updateDevice`.
+  `updateFirmware`/`installFirmware` then walk `FIRMWARE_UPDATE_STATE` through
+  `DO_UPDATE_PENDING`, `PERFORMING_UPDATE` and `UP_TO_DATE` (an `updateDevice` each, one step per
+  `firmwareUpdateDelay`) and set `FIRMWARE` at the end. Without an offer they only record the call.
+  The state names are the RPC specification's; the timing is the simulator's model.
+- `schedule` runs any scenario call on the simulator's timer (`at` in milliseconds from now) and
+  resolves with the results; `close()` cancels what did not run yet.
 
 ## Interface processes misbehaving
 
@@ -440,6 +480,12 @@ curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "P
 
 ### Unreleased
 
+- Device and radio health: `setReachable` (UNREACH, and STICKY_UNREACH on BidCos until a client
+  clears it; `unreachWrites: 'fault'` answers writes with notReachable), `setLowBattery`,
+  `setDutyCycle` and `setCarrierSense` (in `listBidcosInterfaces` and, on hmip, as the radio
+  module's `DUTY_CYCLE_LEVEL`/`CARRIER_SENSE_LEVEL`), `offerFirmware` with the update states
+  `updateFirmware`/`installFirmware` then walk through, and `schedule` for a timeline of scenario
+  calls.
 - Interface processes that misbehave: `stopInterface`, `startInterface` and `restartInterface`
   (forgetting the registered clients, or calling them back as rfd does after a restart),
   `interfaces.<iface>.startDelay`, `pong` and `pingDelay`, `injectFault` (delay, hang, fault,
