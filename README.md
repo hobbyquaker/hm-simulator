@@ -132,6 +132,10 @@ sim.getWriteLog(); // every accepted putParamset: {iface, address, paramset, val
 sim.getConfigPending('rfd'); // [{address, sticky}]
 sim.getPoisonedChannels('hmip'); // channels whose stored MASTER has a parameter they do not have
 sim.getMissingParamsetDescriptions(); // [{iface, key, usedKey}]: paramsets without an exact description
+sim.fireEvents('rfd', [[address, 'WORKING', true], ...], {batch: 10}); // a burst as system.multicall batches
+await sim.restartInterface('hmip', {downMs: 2000, forgetClients: true}); // see below
+sim.injectFault({iface: 'rfd', method: 'setValue', fault: 'notReachable'}); // see below
+sim.getCallbackLog(); // [{iface, client, method, sentAt, answeredAt, error}]
 sim.api.emit('setValue', 'rfd', 'ABC0000001:1', 'STATE', true); // as a behaviour script would
 ```
 
@@ -179,6 +183,11 @@ new HmSim({
 | `configPendingDelay`           | `0`                                                                            | milliseconds after which a non-sticky `CONFIG_PENDING` clears itself - the stand-in for the device taking the configuration. The lab measured 160-180 s on a thermostat that transmits regularly, and "until someone opens the door" on a contact |
 | `serviceMessagesEmptyAsString` | `false`                                                                        | answer `getServiceMessages` with `''` instead of `[]` when nothing is pending, which is what rfd really does                                                                                                                                      |
 | `protocols`                    | `['binrpc', 'xmlrpc']` for `rfd` and `wired`                                   | what the port of a BidCos interface answers, see [What is simulated](#what-is-simulated)                                                                                                                                                          |
+| `listenerModel`                | `'isolated'`                                                                   | `'measured'`: what the interface processes do with a callback server that hangs, see [Interface processes misbehaving](#interface-processes-misbehaving)                                                                                          |
+| `pong`                         | `false` for `hmip`, `true` for the rest                                        | whether `ping` sends the `CENTRAL`/`PONG` event (to every registered client)                                                                                                                                                                      |
+| `pingDelay`                    | `0`                                                                            | milliseconds between `ping` and its `PONG` event                                                                                                                                                                                                  |
+| `startDelay`                   | `0`                                                                            | milliseconds after `whenReady()` until the port accepts connections: a process that starts late (`sim.ports` knows the port from the start)                                                                                                       |
+| `deliveryTimeout`              | `10000`                                                                        | `'measured'` BidCos only: a client that does not answer a callback within this time is dropped                                                                                                                                                    |
 
 | `configPendingMode` | what a `putParamset MASTER` does                                                                                                                                                         |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -232,6 +241,51 @@ Every entry can still be replaced individually:
 ```js
 new HmSim({faults: {unknownParameter: {faultCode: -4, faultString: 'Unknown parameter'}}});
 ```
+
+## Interface processes misbehaving
+
+For the code that has to survive an interface process that restarts, starts late, answers slowly or
+not at all - reconnects, re-inits, watchdogs, init retries:
+
+```js
+await sim.stopInterface('hmip'); // the port refuses connections, open ones are reset
+await sim.startInterface('hmip', {forgetClients: true}); // up again on the same port
+await sim.restartInterface('rfd', {downMs: 2000, forgetClients: false}); // both, with a pause
+sim.injectFault({iface: 'rfd', method: 'init', times: 3, fault: 'unknownInstance'});
+sim.injectFault({iface: 'hmip', method: '*', delayMs: 1500}); // answer late
+sim.injectFault({method: 'getValue', hang: true}); // never answer
+sim.injectFault({method: 'listDevices', closeSocket: true}); // close the connection instead
+sim.clearFaults();
+```
+
+- **Restarts.** With `forgetClients: true` (the default) a restarted process has forgotten every
+  registered client: no events until the client calls `init` again, and nothing tells it - which
+  is what a watchdog is for. With `forgetClients: false` it remembers them and calls each back as rfd
+  does when it starts with its handlers file: `system.listMethods` (BidCos), `listDevices`,
+  `newDevices`/`deleteDevices` - calls the client did not ask for, which is how it can tell that the
+  process restarted. `dropConnection()` stays what it was: forget the clients, reset the
+  connections, no pause.
+- **Late start.** `interfaces: {hmip: {startDelay: 5000}}` binds the port (so `sim.ports.hmip` is
+  known when `whenReady()` resolves) and refuses connections until the delay is over.
+- **Injected faults** apply to the next `times` calls (default 1; `Infinity` or `-1` until
+  `clearFaults()`) of `method` (`'*'` for any) on `iface` (every interface when omitted), over both
+  transports. `fault` is a name of the fault table or `{faultCode, faultString}`; `delayMs` can be
+  combined with the others.
+- **PONG.** `ping` answers with a `CENTRAL`/`PONG` event to every registered client on the BidCos
+  interfaces and with nothing on hmipserver; `pong` and `pingDelay` change that per interface.
+- **The callback log.** `sim.getCallbackLog()` lists every call the simulator made to a client with
+  when it was sent and answered, so a test can assert that its callback server answers fast.
+
+**A callback server that hangs** (`listenerModel: 'measured'`). Measured on firmware 3.89.8
+(2026-09-25) with a callback server that accepts the connection and never answers:
+
+| interface      | what happens                                                                                                                                                                                                                                                                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hmip`         | `init` is answered at once, `listDevices` is called back afterwards. While that callback hangs, **no event reaches any client** of the interface; they are queued and follow when the connection ends, and the client that hung is not called again. A client that hangs _after_ its registration holds up only itself.                     |
+| `rfd`, `wired` | `system.listMethods` is called back **before** `init` answers, and until it returns **the interface answers nothing at all**, to anybody. When the connection ends, it is tried three more times at once and the client is registered anyway. A registered client that does not take a callback within `deliveryTimeout` (10 s) is dropped. |
+
+That `listDevices` also comes before rfd answers the `init` is the simulator's model, not a
+measurement; so is everything with the default `'isolated'`, where every client is on its own.
 
 ## Fixtures
 
@@ -386,6 +440,13 @@ curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "P
 
 ### Unreleased
 
+- Interface processes that misbehave: `stopInterface`, `startInterface` and `restartInterface`
+  (forgetting the registered clients, or calling them back as rfd does after a restart),
+  `interfaces.<iface>.startDelay`, `pong` and `pingDelay`, `injectFault` (delay, hang, fault,
+  closed connection, for the next calls of a method) and `clearFaults`, and
+  `listenerModel: 'measured'`: what hmipserver and rfd do with a callback server that hangs
+  (hmipserver holds every client's events back, rfd stops answering). `getCallbackLog()` records
+  every call to a client with its timing, `fireEvents()` sends bursts as `system.multicall` batches.
 - The command line is usable out of process: every port may be `0`, `--ports-json <file|->`
   reports the ports once every server listens, `--config` and `--devices` load options and device
   files, `--wired-port`, `--tls` with `--tls-cert-out`, `--auth`, `--behavior-path`,
