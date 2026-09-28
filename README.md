@@ -39,15 +39,26 @@ BIN-RPC-only server of 1.1 back, `['xmlrpc']` the other half.
 
 **Incoming RPC methods.**
 
-|             |                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| session     | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`         |
-| devices     | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `setInstallMode`, `getInstallMode`                     |
-| paramsets   | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`       |
-| links       | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                      |
-| interface   | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only)                     |
-| teams       | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                   |
-| maintenance | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware` (the last two are stubs that record the call) |
+|             |                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| session     | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`                                |
+| devices     | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `setInstallMode`, `getInstallMode`                                            |
+| paramsets   | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                              |
+| links       | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                                             |
+| interface   | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only), `changeKey` (rfd, hmipserver), `logLevel` |
+| teams       | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                                          |
+| maintenance | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware`, `refreshDeployedDeviceFirmwareList` (rfd, hmipserver)               |
+
+**Registering a client.** `init(url, interfaceId)` registers a logic layer and `init(url, '')`
+removes it. The url is `xmlrpc_bin://host:port` (or `binrpc://`) for BIN-RPC callbacks and
+`http://host:port/path` or `https://…` for XML-RPC ones; the path is kept, so one callback server
+can serve several interfaces (`http://127.0.0.1:8184/cb/BidCos-RF`). As on a CCU a registration is
+identified by its url exactly, scheme and path included: `init('http://h:1', '')` does not remove
+`xmlrpc_bin://h:1`.
+
+**Character set.** An XML-RPC request declared ISO-8859-1 (in the XML declaration or the
+Content-Type header), as the interface processes speak it, is read as such; anything else as
+UTF-8. Answers are UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
 
 **Outgoing RPC calls** to every registered logic layer: `listDevices`, `newDevices`,
 `deleteDevices`, `updateDevice` (after `setTeam`), `event`, `system.multicall`.
@@ -480,6 +491,15 @@ curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "P
 
 ### Unreleased
 
+- The calls openccu-lite's daemon makes: `logLevel` (rfd and hs485d answer the level, 5 until set;
+  hmipserver an empty string), `changeKey` (rfd, hmipserver; recorded in `sim.keyChanges`) and
+  `refreshDeployedDeviceFirmwareList` (rfd, hmipserver; recorded in
+  `sim.firmwareListRefreshes`), with the interfaces measured on a CCU with firmware 3.89.x.
+- `init` keeps the path of an XML-RPC callback url (`http://host:port/cb/BidCos-RF`; the path used
+  to end up in the port), takes `https://`, and identifies a registration by its url exactly, scheme
+  included, as the interface processes do - an `init(url, '')` with another scheme no longer removes
+  it. A url that is none is a fault.
+- An XML-RPC request declared ISO-8859-1 is read as ISO-8859-1 instead of UTF-8.
 - Device and radio health: `setReachable` (UNREACH, and STICKY_UNREACH on BidCos until a client
   clears it; `unreachWrites: 'fault'` answers writes with notReachable), `setLowBattery`,
   `setDutyCycle` and `setCarrierSense` (in `listBidcosInterfaces` and, on hmip, as the radio
