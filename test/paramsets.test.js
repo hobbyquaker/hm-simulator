@@ -155,3 +155,20 @@ describe('getParamset / putParamset / getValue', () => {
         assert.equal(await rfd('getValue', [SWITCH, 'WORKING']), true);
     });
 });
+
+describe('ENUM defaults', () => {
+    it('starts an ENUM whose DEFAULT is the index at that index, not -1', async () => {
+        const fixture = require('../data/fixtures/devices.json');
+        const {sim, binrpcPort} = await startSim({
+            devices: JSON.parse(JSON.stringify(fixture.devices)),
+            paramsetDescriptions: fixture.paramsetDescriptions,
+        });
+        const rfd = binrpcCall(binrpcPort);
+        // HM-CC-RT-DN: FAULT_REPORTING has DEFAULT 0 and the service flag
+        const thermostat = sim.devices.rfd.devices.find((device) => device.TYPE === 'CLIMATECONTROL_RT_TRANSCEIVER');
+        assert.equal(await rfd('getValue', [thermostat.ADDRESS, 'FAULT_REPORTING']), 0);
+        assert.deepEqual(await rfd('getServiceMessages', []), []);
+        rfd.close();
+        sim.close();
+    });
+});

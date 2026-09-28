@@ -329,6 +329,9 @@ hm-simulator [options]
 
 ### Unreleased
 
+- An ENUM whose description gives `DEFAULT` as the index (1088 of the 5624 ENUMs in the bundled
+  descriptions) started at `-1` instead of that index, so a thermostat's `FAULT_REPORTING` was a
+  service message from the start.
 - rfd and BidCos-Wired answer BIN-RPC and XML-RPC on the same port, as on a CCU, so a client
   that talks XML-RPC to rfd can be tested too; the callbacks follow the URL a client registered
   with, whichever protocol it registered over. With `tls` the XML-RPC half is HTTPS, BIN-RPC stays
