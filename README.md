@@ -104,7 +104,7 @@ run tests in parallel.
 | `config.virtualListenPort` | off                                                  | VirtualDevices                                                                          |
 | `config.cuxdListenPort`    | off                                                  | CUxD                                                                                    |
 | `config.virtualPath`       | `/groups`                                            | path the VirtualDevices server answers on                                               |
-| `behaviorPath`             | `behaviors/` of the package                          | directory with behaviour scripts                                                        |
+| `behaviorPath`             | `behaviors/` of the package                          | directory with behaviour scripts, `false` for none                                      |
 | `rega`                     | off                                                  | ReGa mock, see below                                                                    |
 | `links`                    | `{}`                                                 | links per interface, `[{SENDER, RECEIVER, NAME, DESCRIPTION}]`                          |
 | `serviceMessages`          | `{}`                                                 | service messages per interface, `[[address, datapoint, value]]`                         |
@@ -295,14 +295,71 @@ sends a trailing **empty string** in `CHILDREN`, for instance.
 ```
 hm-simulator [options]
 
-  --listen-address <ip>   default 127.0.0.1
-  --binrpc-port <port>    rfd, default 2001
-  --xmlrpc-port <port>    hmipserver, default 2010
-  --virtual-port <port>   VirtualDevices, off unless given
-  --cuxd-port <port>      CUxD, off unless given
-  --rega-port <port>      ReGa mock, default 8181
-  --no-rega               do not start the ReGa mock
-  -v, --verbosity <level> error|warn|info|debug, default info
+  --listen-address <ip>     default 127.0.0.1
+  --binrpc-port <port>      rfd (BIN-RPC and XML-RPC), default 2001
+  --xmlrpc-port <port>      hmipserver, default 2010
+  --wired-port <port>       BidCos-Wired, off unless given or configured
+  --virtual-port <port>     VirtualDevices, off unless given
+  --cuxd-port <port>        CUxD, off unless given
+  --rega-port <port>        ReGa mock, default 8181
+  --no-rega                 do not start the ReGa mock
+                            every port may be 0: the system picks a free one
+  --ports-json <file|->     once every server listens, write the ports as JSON to the file, or
+                            as one line to stdout with "-" (the log then goes to stderr)
+  --config <file>           constructor options as a .json or .js file; the flags override it
+  --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions}, such
+                            as data/fixtures/devices.json; default: the bundled rfd and hmip lists
+  --tls                     serve the XML-RPC servers over TLS with a generated certificate
+  --tls-cert-out <file>     write that certificate (PEM) to the file
+  --auth <user:password>    HTTP basic auth for the XML-RPC servers and ReGa
+  --behavior-path <dir>     behaviour scripts, default the bundled examples
+  --no-behaviors            no behaviour scripts
+  --control-port <port>     the scenario API over HTTP on 127.0.0.1, off unless given
+  -v, --verbosity <level>   error|warn|info|debug, default info
+  --version
+  -h, --help
+```
+
+Unlike the library, the CLI listens on `127.0.0.1`, starts the ReGa mock on 8181 and loads the
+bundled device lists unless `--devices` or `--config` says otherwise.
+
+**Out of process** - for a test whose code under test cannot `require()` the simulator (a daemon
+in another language, a spawned service): start it with every port `0` and `--ports-json -`, wait
+for the first line on stdout, and read the ports from it:
+
+```
+$ hm-simulator --binrpc-port 0 --xmlrpc-port 0 --rega-port 0 --no-behaviors \
+    --devices node_modules/hm-simulator/data/fixtures/devices.json --control-port 0 --ports-json -
+{"rfd":40123,"hmip":40124,"rega":40125,"control":40126}
+```
+
+`--ports-json <file>` writes the same object to a file instead (atomically: a reader never sees
+half of it). A port that is taken ends the process with exit code 1 and the address in the
+message. `SIGTERM` and `SIGINT` close every server and exit 0.
+
+`--config` takes the constructor options as a file; `devices` and `paramsetDescriptions` in it may
+be paths (relative to the file), `devices` a device file as for `--devices`. The flags win over the
+file:
+
+```json
+{
+  "devices": "node_modules/hm-simulator/data/fixtures/devices.json",
+  "interfaces": {"rfd": {"serviceMessagesEmptyAsString": true}},
+  "links": {"rfd": []}
+}
+```
+
+**The control port** (`--control-port`, loopback only) is the [scenario API](#scenario-api) over
+HTTP: `POST /scenario/<call>` with a JSON array of the arguments, `GET /scenario/<call>` for one
+without arguments. The answer is `{"result": ...}`; a fault is `400` with `faultCode` and
+`faultString`, an unknown call `404`. `GET /ports` answers the ports. The calls:
+`addDevice`, `removeDevice`, `fireEvent`, `setValue` (the device reporting a value, as a behaviour
+script does), `setServiceMessage`, `scriptNewDevices`, `dropConnection`, `getDevice`,
+`getWriteLog`, `getConfigPending`, `getPoisonedChannels`, `getMissingParamsetDescriptions`,
+`getTempKey`, `getInstallMode`.
+
+```
+curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "PRESS_SHORT", true]'
 ```
 
 ## Compatibility
@@ -329,6 +386,11 @@ hm-simulator [options]
 
 ### Unreleased
 
+- The command line is usable out of process: every port may be `0`, `--ports-json <file|->`
+  reports the ports once every server listens, `--config` and `--devices` load options and device
+  files, `--wired-port`, `--tls` with `--tls-cert-out`, `--auth`, `--behavior-path`,
+  `--no-behaviors`, and `--control-port` serves the scenario API over HTTP on the loopback. A taken
+  port exits 1 with the address in the message. `behaviorPath: false` starts no behaviour scripts.
 - An ENUM whose description gives `DEFAULT` as the index (1088 of the 5624 ENUMs in the bundled
   descriptions) started at `-1` instead of that index, so a thermostat's `FAULT_REPORTING` was a
   service message from the start.
