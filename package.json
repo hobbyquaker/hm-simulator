@@ -48,6 +48,7 @@
     "data/",
     "behaviors/",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "dependencies": {

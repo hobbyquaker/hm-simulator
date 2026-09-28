@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /* Usage: node .github/release-notes.js v1.0.0 > notes.md
-   Prints the README's changelog section for the given tag plus the commits
-   since the previous tag. Used by the github-release job in release.yml. */
+   Prints CHANGELOG.md's section for the given tag plus the commits since the
+   previous tag. Used by the github-release job in release.yml. */
 
 'use strict';
 
@@ -17,9 +17,11 @@ if (!tag) {
 
 const version = tag.replace(/^v/, '');
 
-// the changelog lives in the README, as "### <version>" under "## Changelog"
-const lines = fs.readFileSync('README.md', 'utf8').split('\n');
-const start = lines.findIndex((line) => line.startsWith('### ') && line.includes(version));
+// the changelog is CHANGELOG.md, one "## <version>" section per release (up to 1.1.0 it was the
+// README's "### <version>" sections, which the pattern still takes)
+const lines = fs.readFileSync('CHANGELOG.md', 'utf8').split('\n');
+const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const start = lines.findIndex((line) => new RegExp(`^#{2,3} v?${escaped}(\\s|$)`).test(line));
 let section = '';
 if (start !== -1) {
     const end = lines.findIndex((line, index) => index > start && /^#{2,3} /.test(line));

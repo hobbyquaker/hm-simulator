@@ -6,36 +6,115 @@
 
 > Simulates a Homematic CCU for automated tests
 
-hm-simulator answers the RPC calls a CCU's interface processes answer, keeps the state behind them
-and calls back into the logic layer that registered itself, so that an application that talks to a
-CCU can be tested without one. It is used by
-[node-red-contrib-ccu](https://github.com/rdmtc/node-red-contrib-ccu),
-[hm2mqtt.js](https://github.com/hobbyquaker/hm2mqtt.js) and
-[Homematic Manager](https://github.com/hobbyquaker/homematic-manager).
+hm-simulator answers the RPC calls a CCU's interface processes answer (rfd, hmipserver,
+BidCos-Wired, VirtualDevices, CUxD), keeps the devices and paramsets behind them, calls back into
+the logic layers that registered, and imitates what the real processes were measured to do -
+faults, `CONFIG_PENDING`, service messages, restarts, a callback server that hangs. An application
+that talks to a CCU can be tested against it without one, in-process or as a separate process. It
+is used by the tests of [node-red-contrib-ccu](https://github.com/rdmtc/node-red-contrib-ccu),
+[hm2mqtt.js](https://github.com/hobbyquaker/hm2mqtt.js),
+[Homematic Manager](https://github.com/hobbyquaker/homematic-manager) and
+[matterbridge-homematic](https://github.com/hobbyquaker/matterbridge-homematic).
 
-## Installation
+- [Quick start](#quick-start)
+- [What is simulated](#what-is-simulated)
+- [Connecting a client](#connecting-a-client)
+- [Options](#options)
+- [Scenario API](#scenario-api)
+- [Recipes](#recipes)
+- [Device data and fixtures](#device-data-and-fixtures)
+- [Interface behaviour, measured](#interface-behaviour-measured)
+- [ReGa mock](#rega-mock)
+- [TLS and basic auth](#tls-and-basic-auth)
+- [Behaviour scripts](#behaviour-scripts)
+- [Command line](#command-line)
+- [Upgrading from 0.x](#upgrading-from-0x)
 
-Prerequisites: [Node.js](https://nodejs.org) >= 20.19
+## Quick start
+
+Prerequisites: [Node.js](https://nodejs.org) >= 20.19.
 
 ```
 npm install --save-dev hm-simulator
 ```
 
-Or, as a standalone process, `npm install -g hm-simulator` and then `hm-simulator --help`.
+A test file with `node:test` - the same shape works with mocha (`before`/`after`) and vitest
+(`beforeAll`/`afterAll`):
+
+```js
+const {before, after, test} = require('node:test');
+const assert = require('node:assert/strict');
+const HmSim = require('hm-simulator/sim.js'); // ESM: import HmSim from 'hm-simulator/sim.mjs'
+const lab = require('hm-simulator/data/fixtures/lab-2026-09.json');
+
+let sim;
+
+before(async () => {
+  sim = new HmSim({
+    devices: structuredClone(lab.devices), // the simulator changes the lists it is given
+    paramsetDescriptions: lab.paramsetDescriptions,
+    links: structuredClone(lab.links),
+    bidcosInterfaces: lab.bidcosInterfaces,
+    behaviorPath: false, // no example behaviour scripts firing events of their own
+    config: {listenAddress: '127.0.0.1', binrpcListenPort: 0, xmlrpcListenPort: 0, wiredListenPort: 0},
+  });
+  await sim.whenReady(); // every server listens; rejects when a port is taken
+});
+
+after(() => sim.close());
+
+test('the code under test sees the blind actuator', async () => {
+  // point the code under test at xmlrpc_bin://127.0.0.1:${sim.ports.rfd} (BidCos-RF)
+  // and http://127.0.0.1:${sim.ports.hmip} (HmIP-RF)
+  assert.equal(sim.getDevice('hmip', '00000000000004').TYPE, 'HmIP-BBL');
+});
+```
+
+Port `0` lets the operating system pick a free port, so test files can run in parallel;
+`sim.ports` (`rfd`, `hmip`, `wired`, `virtual`, `cuxd`) holds what it picked once `whenReady()`
+resolved.
+
+With Playwright, start it in a `globalSetup` and hand the ports to the application under test,
+for example through the environment:
+
+```js
+// playwright.global-setup.js
+const HmSim = require('hm-simulator/sim.js');
+const lab = require('hm-simulator/data/fixtures/lab-2026-09.json');
+
+module.exports = async () => {
+  const sim = new HmSim({
+    devices: structuredClone(lab.devices),
+    paramsetDescriptions: lab.paramsetDescriptions,
+    behaviorPath: false,
+    config: {listenAddress: '127.0.0.1', binrpcListenPort: 0, xmlrpcListenPort: 0},
+  });
+  await sim.whenReady();
+  process.env.CCU_RFD_PORT = String(sim.ports.rfd);
+  process.env.CCU_HMIP_PORT = String(sim.ports.hmip);
+  return () => sim.close(); // Playwright runs the returned function as the teardown
+};
+```
+
+For code that cannot `require()` it - a daemon in another language, a spawned service - run the
+[command line](#command-line) with `--ports-json -` and drive it through the control port.
 
 ## What is simulated
 
-**Interfaces.** rfd (binrpc and xmlrpc), hmipserver (xmlrpc), BidCos-Wired (binrpc and xmlrpc),
-VirtualDevices (xmlrpc, path `/groups`) and CUxD (binrpc). Each has its own devices, values,
-paramsets, links and service messages. rfd and hmipserver start by default, the others when their
-port is configured.
+**Interfaces.** Each has its own devices, values, paramsets, links and service messages.
+
+| Interface      | Protocol                        | Port on a CCU | Option (the CLI flag)                                                      |
+| -------------- | ------------------------------- | ------------- | -------------------------------------------------------------------------- |
+| rfd            | BIN-RPC and XML-RPC on one port | 2001          | `config.binrpcListenPort` (`--binrpc-port`), on when `devices.rfd` exists  |
+| hmipserver     | XML-RPC                         | 2010          | `config.xmlrpcListenPort` (`--xmlrpc-port`), on when `devices.hmip` exists |
+| BidCos-Wired   | BIN-RPC and XML-RPC on one port | 2000          | `config.wiredListenPort` (`--wired-port`), on when `devices.wired` exists  |
+| VirtualDevices | XML-RPC, path `/groups`         | 9292          | `config.virtualListenPort` (`--virtual-port`)                              |
+| CUxD           | BIN-RPC                         | 8701          | `config.cuxdListenPort` (`--cuxd-port`)                                    |
+| ReGa           | HTTP, `rega.exe`                | 8181          | `rega` (`--rega-port`), see [ReGa mock](#rega-mock)                        |
 
 rfd and BidCos-Wired answer **BIN-RPC and XML-RPC on the same port**, as on a CCU: a connection
-that starts with the bytes `Bin` is BIN-RPC, anything else XML-RPC over HTTP. A client may register
-over one and ask for callbacks in the other (`init('xmlrpc_bin://…')` gets BIN-RPC callbacks,
-`init('http://…')` XML-RPC ones). With `tls` the XML-RPC half is HTTPS only and BIN-RPC stays plain;
-basic auth applies to the XML-RPC half. `interfaces: {rfd: {protocols: ['binrpc']}}` gives the
-BIN-RPC-only server of 1.1 back, `['xmlrpc']` the other half.
+that starts with the bytes `Bin` is BIN-RPC, anything else XML-RPC over HTTP.
+`interfaces: {rfd: {protocols: ['binrpc']}}` narrows a port to one of them.
 
 **Incoming RPC methods.**
 
@@ -49,232 +128,168 @@ BIN-RPC-only server of 1.1 back, `['xmlrpc']` the other half.
 | teams       | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                                          |
 | maintenance | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware`, `refreshDeployedDeviceFirmwareList` (rfd, hmipserver)               |
 
-**Registering a client.** `init(url, interfaceId)` registers a logic layer and `init(url, '')`
-removes it. The url is `xmlrpc_bin://host:port` (or `binrpc://`) for BIN-RPC callbacks and
-`http://host:port/path` or `https://…` for XML-RPC ones; the path is kept, so one callback server
-can serve several interfaces (`http://127.0.0.1:8184/cb/BidCos-RF`). As on a CCU a registration is
-identified by its url exactly, scheme and path included: `init('http://h:1', '')` does not remove
-`xmlrpc_bin://h:1`.
-
-**Character set.** An XML-RPC request declared ISO-8859-1 (in the XML declaration or the
-Content-Type header), as the interface processes speak it, is read as such; anything else as
-UTF-8. Answers are UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
+Every write is checked against the paramset description (type, range, `VALUE_LIST`,
+`OPERATIONS`) and answered the way the interface process answers it - see
+[Interface behaviour, measured](#interface-behaviour-measured). `sim.methodNames()` lists the
+methods.
 
 **Outgoing RPC calls** to every registered logic layer: `listDevices`, `newDevices`,
-`deleteDevices`, `updateDevice` (after `setTeam`), `event`, `system.multicall`.
+`deleteDevices`, `updateDevice`, `event` and `system.multicall`; after a restart with remembered
+clients also `system.listMethods`.
 
-**ReGa** (`rega.exe` on port 8181): the scripts of the
-[homematic-rega](https://github.com/hobbyquaker/homematic-rega) client - `getChannels`,
-`getVariables`, `getPrograms`, `getRooms`, `getFunctions`, `getValues` - plus setting a variable,
-renaming an object, activating and executing a program. Every script the mock receives is recorded
-(`sim.regaSim.scripts`), renames additionally in `sim.regaSim.renames`.
+**What is not simulated:** the radio protocol and anything a device does on its own beyond what a
+behaviour script or the scenario API makes it do; firmware behaviour beyond the update states of
+[Device and radio health](#device-and-radio-health); duty cycle and carrier sense beyond the
+levels a test sets; HmIP groups and heating groups as hmipserver forms them (VirtualDevices serves
+whatever devices it is given); the CCU's web UI and JSON-API (`/api/homematic.cgi`); openccu-lite's
+own APIs; ReGa beyond the scripts listed under [ReGa mock](#rega-mock).
 
-**Faults.** Unknown method, unknown address, unknown paramset, unknown parameter, read-only
-parameter, wrong type, out of range, unknown link. Over xmlrpc as an XML-RPC fault, over binrpc as
-a message of type `0xff` with a `faultCode`/`faultString` struct - see
-[Fault codes](#fault-codes-measured) below.
+## Connecting a client
 
-What is **not** simulated: the actual radio protocol, firmware behaviour beyond the update states
-of [Device and radio health](#device-and-radio-health), the CCU's web UI and JSON-API, and anything a device does on its own beyond what a behaviour script or the
-scenario API makes it do.
+A logic layer registers with `init(url, interfaceId)` and removes itself with `init(url, '')`. The
+url is `xmlrpc_bin://host:port` (or `binrpc://`) for BIN-RPC callbacks and `http://host:port/path`
+or `https://…` for XML-RPC ones, whichever protocol the `init` itself came over. The path is kept,
+so one callback server can serve several interfaces (`http://127.0.0.1:8184/cb/BidCos-RF`). As on
+a CCU a registration is identified by its url exactly, scheme and path included:
+`init('http://h:1', '')` does not remove `xmlrpc_bin://h:1`. A url that is none is a fault.
 
-## Usage
+After the `init` the simulator calls the client back as the interface processes do:
+
+1. `listDevices(interfaceId)` - what the client already knows;
+2. `deleteDevices` for devices the client knows and the interface does not (or whose `VERSION`
+   differs), then `newDevices` with the ones the client does not know. hmipserver sends **every**
+   device again on every `init`, and so does the simulator on `hmip`;
+3. from then on `event(interfaceId, address, datapoint, value)` for every change - several at once
+   as `system.multicall` (`fireEvents`).
+
+`ping(callerId)` answers with a `CENTRAL`/`PONG` event to every registered client on the BidCos
+interfaces, and with nothing on hmipserver, as the real one (`interfaces.<iface>.pong` changes
+that). A client that watches for events to arrive therefore has to treat HmIP differently.
+
+`sim.dropConnection(iface)` is an interface process that restarts in an instant: every registered
+client is forgotten and every open connection reset; nothing tells the client, which receives no
+more events until it calls `init` again. `restartInterface()` and its siblings model slower and
+more talkative restarts, see [Interface processes misbehaving](#interface-processes-misbehaving).
+
+Strings: an XML-RPC request declared ISO-8859-1 (in the XML declaration or the Content-Type
+header), as the interface processes speak it, is read as such, anything else as UTF-8; answers are
+UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
+
+## Options
+
+`new HmSim(options)`; everything is optional.
+
+| option                     | default                                              |                                                                                              |
+| -------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `devices`                  | `{rfd: {devices: []}, hmip: {devices: []}}`          | device descriptions per interface, `{<iface>: {devices: [...]}}`                             |
+| `paramsetDescriptions`     | the bundled 8.4 MB `data/paramset-descriptions.json` | replaces the bundled descriptions, see [Device data and fixtures](#device-data-and-fixtures) |
+| `paramsetFallback`         | `true`                                               | a firmware without a description uses the nearest one; `false` for exact keys only           |
+| `links`                    | `{}`                                                 | links per interface, `[{SENDER, RECEIVER, FLAGS, NAME, DESCRIPTION}]`                        |
+| `bidcosInterfaces`         | one per interface                                    | what `listBidcosInterfaces` answers, per interface                                           |
+| `serviceMessages`          | `{}`                                                 | extra service messages per interface, `[[address, datapoint, value]]`                        |
+| `newDevices`               | `{}`                                                 | devices that appear when the install mode is switched on, `{<iface>: {devices, delay}}`      |
+| `defaultRssi`              | `-65`                                                | what `rssiInfo` answers where a device has no RSSI datapoint                                 |
+| `config.listenAddress`     | all interfaces                                       | `'127.0.0.1'` in tests                                                                       |
+| `config.binrpcListenPort`  | –                                                    | rfd                                                                                          |
+| `config.xmlrpcListenPort`  | –                                                    | hmipserver                                                                                   |
+| `config.wiredListenPort`   | –                                                    | BidCos-Wired, started when `devices.wired` exists                                            |
+| `config.virtualListenPort` | off                                                  | VirtualDevices                                                                               |
+| `config.virtualPath`       | `/groups`                                            | the path VirtualDevices answers on                                                           |
+| `config.cuxdListenPort`    | off                                                  | CUxD                                                                                         |
+| `interfaces`               | see below                                            | behaviour per interface, `{<iface>: {...}}`                                                  |
+| `faults`                   | hmipserver's table                                   | overrides for the fault table, see [Fault codes](#fault-codes)                               |
+| `behaviorPath`             | `behaviors/` of the package                          | directory with [behaviour scripts](#behaviour-scripts), `false` for none                     |
+| `rega`                     | off                                                  | the [ReGa mock](#rega-mock)                                                                  |
+| `tls`                      | off                                                  | `true` or `{key, cert}`, see [TLS and basic auth](#tls-and-basic-auth)                       |
+| `auth`                     | off                                                  | `{username, password}`, HTTP basic auth                                                      |
+| `log`                      | silent                                               | an object with `debug`, `info`, `warn`, `error` (`console` will do)                          |
+
+**Per interface** (`interfaces: {hmip: {...}, rfd: {...}}`):
+
+| option                         | default                                                                        |                                                                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `configPendingMode`            | `'hmip'` for `hmip`, `'bidcos'` for `rfd` and `wired`, `'strict'` for the rest | what a MASTER write does, see [CONFIG_PENDING](#config_pending)                                                                                                                                               |
+| `configPendingOnWrite`         | `false`                                                                        | raise `CONFIG_PENDING` for _every_ accepted MASTER write (implied by `'bidcos'` for every write that changes something)                                                                                       |
+| `configPendingDelay`           | `0`                                                                            | milliseconds after which a non-sticky `CONFIG_PENDING` clears itself: the device taking the configuration (measured: 160-180 s on a thermostat that transmits regularly, "until the door opens" on a contact) |
+| `serviceMessagesEmptyAsString` | `false`                                                                        | answer `getServiceMessages` with `''` instead of `[]` when nothing is pending, which is what rfd really does                                                                                                  |
+| `protocols`                    | `['binrpc', 'xmlrpc']` for `rfd` and `wired`                                   | what the port of a BidCos interface answers                                                                                                                                                                   |
+| `listenerModel`                | `'isolated'`                                                                   | `'measured'`: what the interface processes do with a callback server that hangs, see [below](#a-callback-server-that-hangs)                                                                                   |
+| `deliveryTimeout`              | `10000`                                                                        | `'measured'` BidCos only: a client that does not take a callback within this time is dropped                                                                                                                  |
+| `pong`                         | `false` for `hmip`, `true` for the rest                                        | whether `ping` sends the `CENTRAL`/`PONG` event                                                                                                                                                               |
+| `pingDelay`                    | `0`                                                                            | milliseconds between `ping` and its `PONG`                                                                                                                                                                    |
+| `startDelay`                   | `0`                                                                            | milliseconds after `whenReady()` until the port accepts connections: a process that starts late (`sim.ports` knows the port from the start)                                                                   |
+| `unreachWrites`                | `'accept'`                                                                     | what `setValue`/`putParamset` to an unreachable device answer: `'accept'`, or `'fault'` (`notReachable`). The simulator's model, not a measurement                                                            |
+| `firmwareUpdateDelay`          | `0`                                                                            | milliseconds per step of a firmware update                                                                                                                                                                    |
+
+## Scenario API
+
+What a test calls on the simulator to make things happen and to look at what happened. The same
+calls are available over HTTP on the [control port](#the-control-port).
+
+**Devices**
 
 ```js
-const HmSim = require('hm-simulator/sim.js'); // ESM: import HmSim from 'hm-simulator/sim.mjs'
-
-const sim = new HmSim({
-  devices: {
-    rfd: require('hm-simulator/data/devices-rfd.json'),
-    hmip: require('hm-simulator/data/devices-hmip.json'),
-  },
-  config: {listenAddress: '127.0.0.1', binrpcListenPort: 2001, xmlrpcListenPort: 2010},
-});
-
-await sim.whenReady(); // every server is accepting connections
-// ... run the code under test ...
-sim.close();
+sim.addDevice('rfd', device, channel0, channel1); // pairs a device: newDevices to the clients
+sim.removeDevice('rfd', 'LAB0000002'); // deleteDevices, with its values and links
+sim.scriptNewDevices('rfd', [device, channel0, channel1], 500); // appear 500 ms after setInstallMode
+sim.getDevice('rfd', 'LAB0000002:1'); // the description, false when unknown
 ```
 
-With a port of `0` the operating system picks one and `sim.ports` holds what it picked
-(`sim.ports.rfd`, `sim.ports.hmip`, ...) once `whenReady()` resolved. That is the reliable way to
-run tests in parallel.
-
-### Options
-
-| option                     | default                                              |                                                                                         |
-| -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `log`                      | silent                                               | object with `debug`, `info`, `warn`, `error`                                            |
-| `devices`                  | `{rfd: {devices: []}, hmip: {devices: []}}`          | device descriptions per interface                                                       |
-| `paramsetDescriptions`     | the bundled 8.4 MB `data/paramset-descriptions.json` | replaces the bundled descriptions                                                       |
-| `paramsetFallback`         | `true`                                               | a firmware without a description uses the nearest one, see [Fixtures](#fixtures)        |
-| `config.listenAddress`     | all interfaces                                       |                                                                                         |
-| `config.binrpcListenPort`  | –                                                    | rfd                                                                                     |
-| `config.xmlrpcListenPort`  | –                                                    | hmipserver                                                                              |
-| `config.wiredListenPort`   | –                                                    | BidCos-Wired, started when `devices.wired` exists                                       |
-| `config.virtualListenPort` | off                                                  | VirtualDevices                                                                          |
-| `config.cuxdListenPort`    | off                                                  | CUxD                                                                                    |
-| `config.virtualPath`       | `/groups`                                            | path the VirtualDevices server answers on                                               |
-| `behaviorPath`             | `behaviors/` of the package                          | directory with behaviour scripts, `false` for none                                      |
-| `rega`                     | off                                                  | ReGa mock, see below                                                                    |
-| `links`                    | `{}`                                                 | links per interface, `[{SENDER, RECEIVER, NAME, DESCRIPTION}]`                          |
-| `serviceMessages`          | `{}`                                                 | service messages per interface, `[[address, datapoint, value]]`                         |
-| `newDevices`               | `{}`                                                 | devices that appear when the install mode is switched on, `{<iface>: {devices, delay}}` |
-| `bidcosInterfaces`         | one per interface                                    | what `listBidcosInterfaces` answers                                                     |
-| `defaultRssi`              | `-65`                                                | what `rssiInfo` answers where a device has no RSSI datapoint                            |
-| `interfaces`               | see [CONFIG_PENDING](#config_pending)                | per interface behaviour                                                                 |
-| `faults`                   | see [Fault codes](#fault-codes-measured)             | overrides for the fault table                                                           |
-| `tls`                      | off                                                  | `true` generates a self signed certificate, or pass `{key, cert}`                       |
-| `auth`                     | off                                                  | `{username, password}`, HTTP basic auth for the xmlrpc servers and ReGa                 |
-
-`rega` takes `{port, listenAddress, channels, variables, programs, rooms, functions, values, tls,
-auth}`. `channels` is what `getChannels()` answers: `[{id, address, name}]`.
-
-### Scenario API
+**Values and events**
 
 ```js
-sim.addDevice('rfd', deviceDescription, channel0, channel1); // sends newDevices
-sim.removeDevice('rfd', 'ABC0000001'); // sends deleteDevices
-sim.fireEvent('rfd', 'ABC0000001:1', 'STATE', true); // one event, no validation
-sim.setServiceMessage('rfd', 'ABC0000001:0', 'STICKY_UNREACH', true);
-sim.scriptNewDevices('rfd', [devices], 500); // appear after setInstallMode
-await sim.dropConnection('rfd'); // interface process restart
-sim.getWriteLog(); // every accepted putParamset: {iface, address, paramset, values, rejected, ts}
+sim.fireEvent('rfd', 'LAB0000002:1', 'STATE', true); // one event, not checked against the description
+sim.fireEvents('hmip', [[address, 'LEVEL', 0.5], ...], {batch: 10}); // a burst as system.multicall
+sim.setValue('rfd', 'LAB0000002:1', 'STATE', true, {internal: true}); // the device reports a value
+sim.values.rfd['LAB0000002:1'].VALUES.STATE; // the stored state: VALUES, MASTER, LINKS per channel
+sim.api.emit('setValue', 'rfd', 'LAB0000002:1', 'STATE', true); // as a behaviour script does
+```
+
+**Service messages, device and radio health**
+
+```js
+sim.setServiceMessage('rfd', 'LAB0000002:0', 'STICKY_UNREACH', true);
+sim.setReachable('hmip', '00000000000004', false); // UNREACH (+ STICKY_UNREACH on BidCos)
+sim.setLowBattery('rfd', 'LAB0000003', true); // LOWBAT or LOW_BAT, whichever :0 has
+sim.setDutyCycle('rfd', 42); // listBidcosInterfaces' DUTY_CYCLE
+sim.setCarrierSense('hmip', 8); // and CARRIER_SENSE_LEVEL on the radio module's :0
+sim.offerFirmware('hmip', '00000000000004', '1.2.0'); // a firmware update becomes available
+```
+
+**Interface processes**
+
+```js
+await sim.dropConnection('rfd'); // restart in an instant, clients forgotten
+await sim.stopInterface('hmip'); // the port refuses connections
+await sim.startInterface('hmip', {forgetClients: true});
+await sim.restartInterface('rfd', {downMs: 2000, forgetClients: false});
+sim.injectFault({iface: 'rfd', method: 'setValue', fault: 'notReachable', times: 1});
+sim.clearFaults();
+```
+
+**Time**
+
+```js
+await sim.schedule([{at: 1000, call: 'setReachable', args: ['rfd', 'LAB0000002', false]}]);
+```
+
+**Introspection**
+
+```js
+sim.getWriteLog(); // every accepted putParamset: [{iface, address, paramset, values, rejected, ts}]
 sim.getConfigPending('rfd'); // [{address, sticky}]
 sim.getPoisonedChannels('hmip'); // channels whose stored MASTER has a parameter they do not have
-sim.getMissingParamsetDescriptions(); // [{iface, key, usedKey}]: paramsets without an exact description
-sim.fireEvents('rfd', [[address, 'WORKING', true], ...], {batch: 10}); // a burst as system.multicall batches
-await sim.restartInterface('hmip', {downMs: 2000, forgetClients: true}); // see below
-sim.injectFault({iface: 'rfd', method: 'setValue', fault: 'notReachable'}); // see below
-sim.getCallbackLog(); // [{iface, client, method, sentAt, answeredAt, error}]
-sim.setReachable('rfd', 'ABC0000001', false); // see Device and radio health
-sim.schedule([{at: 1000, call: 'setReachable', args: ['rfd', 'ABC0000001', true]}]); // a timeline
-sim.api.emit('setValue', 'rfd', 'ABC0000001:1', 'STATE', true); // as a behaviour script would
+sim.getMissingParamsetDescriptions(); // [{iface, key, usedKey}]; empty: the fixture is complete
+sim.getCallbackLog(); // every call to a client: [{iface, client, method, sentAt, answeredAt, error}]
+sim.getTempKey('rfd'); // what setTempKey set
+sim.getInstallMode('rfd'); // seconds of install mode left
+sim.keyChanges; // every changeKey: [{iface, key, ts}]
+sim.firmwareListRefreshes; // every refreshDeployedDeviceFirmwareList: [{iface, ts}]
+sim.ports; // {rfd, hmip, wired, virtual, cuxd, ...}: the ports once whenReady() resolved
+sim.regaSim.scripts; // every script the ReGa mock received
 ```
 
-Behaviour scripts are plain modules in `behaviorPath` that export `api => { ... }` and use
-`api.emit('setValue', iface, address, datapoint, value)`; the two examples in `behaviors/` press a
-virtual button and open a window periodically. Point `behaviorPath` at an empty directory to have
-none.
-
-## CONFIG_PENDING
-
-Devices that end up stuck in `CONFIG_PENDING` after a paramset write are the reason this part
-exists (Homematic Manager issue #98). Until 2026-09-05 there were two competing explanations and
-nobody had measured which one the interface processes actually implement. Homematic Manager's
-roadmap task 6 measured it, on two lab CCUs on firmware 3.89.8; the write-up with the raw answers
-is `docs/config-pending.md` in that repository, and the answer is that neither hypothesis was
-right:
-
-- **hmipserver stores what it rejects.** Everything in the struct is written into its own
-  configuration for the channel first; the fault comes afterwards, when the result cannot be
-  transferred to the device. A parameter the channel does not have is stored **for ever** - it
-  survives a restart, no RPC method removes it, and from then on every `putParamset` on that
-  channel faults, including one with an empty struct. A value of the wrong type raises a sticky
-  `CONFIG_PENDING`, which a valid full MASTER write clears. A number outside `MIN`..`MAX` is
-  accepted without a word: hmipserver does not range-check.
-- **rfd never faults on a value.** It drops a parameter the device does not have, ignores what it
-  cannot use, clamps numbers into `MIN`..`MAX` and coerces strings - and answers `ok` to all of
-  it. `CONFIG_PENDING` there means "a configuration is queued for the device" and clears when the
-  device takes it, which on a battery device is when it next wakes up.
-
-The simulator implements both, plus the two original hypotheses, per interface:
-
-```js
-new HmSim({
-  interfaces: {
-    hmip: {configPendingMode: 'hmip'}, // the default for hmip
-    rfd: {configPendingMode: 'bidcos', configPendingDelay: 3000}, // the default for rfd and wired
-  },
-});
-```
-
-| option                         | default                                                                        |                                                                                                                                                                                                                                                   |
-| ------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `configPendingMode`            | `'hmip'` for `hmip`, `'bidcos'` for `rfd` and `wired`, `'strict'` for the rest | see the table below                                                                                                                                                                                                                               |
-| `configPendingOnWrite`         | `false`                                                                        | raise `CONFIG_PENDING` for _every_ accepted MASTER write. Implied by `'bidcos'`, which raises it for every write that changes something                                                                                                           |
-| `configPendingDelay`           | `0`                                                                            | milliseconds after which a non-sticky `CONFIG_PENDING` clears itself - the stand-in for the device taking the configuration. The lab measured 160-180 s on a thermostat that transmits regularly, and "until someone opens the door" on a contact |
-| `serviceMessagesEmptyAsString` | `false`                                                                        | answer `getServiceMessages` with `''` instead of `[]` when nothing is pending, which is what rfd really does                                                                                                                                      |
-| `protocols`                    | `['binrpc', 'xmlrpc']` for `rfd` and `wired`                                   | what the port of a BidCos interface answers, see [What is simulated](#what-is-simulated)                                                                                                                                                          |
-| `listenerModel`                | `'isolated'`                                                                   | `'measured'`: what the interface processes do with a callback server that hangs, see [Interface processes misbehaving](#interface-processes-misbehaving)                                                                                          |
-| `pong`                         | `false` for `hmip`, `true` for the rest                                        | whether `ping` sends the `CENTRAL`/`PONG` event (to every registered client)                                                                                                                                                                      |
-| `pingDelay`                    | `0`                                                                            | milliseconds between `ping` and its `PONG` event                                                                                                                                                                                                  |
-| `startDelay`                   | `0`                                                                            | milliseconds after `whenReady()` until the port accepts connections: a process that starts late (`sim.ports` knows the port from the start)                                                                                                       |
-| `deliveryTimeout`              | `10000`                                                                        | `'measured'` BidCos only: a client that does not answer a callback within this time is dropped                                                                                                                                                    |
-| `unreachWrites`                | `'accept'`                                                                     | what `setValue`/`putParamset` to an unreachable device answer: `'accept'`, or `'fault'` (`notReachable`). The simulator's model, not a measurement                                                                                                |
-| `firmwareUpdateDelay`          | `0`                                                                            | milliseconds per step of a firmware update, see [Device and radio health](#device-and-radio-health)                                                                                                                                               |
-
-| `configPendingMode` | what a `putParamset MASTER` does                                                                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `'hmip'`            | measured hmipserver: stores everything, faults when the result is not transferable, poisons the channel on an unknown parameter, sticky `CONFIG_PENDING` on a wrong type, no range check |
-| `'bidcos'`          | measured rfd: no fault, unknown parameters dropped, values clamped or ignored, `CONFIG_PENDING` while the change is queued                                                               |
-| `'strict'`          | the first hypothesis: an invalid write is answered with a fault and nothing is written                                                                                                   |
-| `'pending'`         | the second hypothesis: the write is accepted, the valid parameters are stored, the rejected ones are recorded, and a sticky `CONFIG_PENDING` is raised                                   |
-
-In `'strict'` and `'pending'` a sticky `CONFIG_PENDING` clears on a valid full MASTER write, on
-`clearConfigCache(deviceAddress)` or on `restoreConfigToDevice(deviceAddress)`. In `'hmip'` only
-the valid full MASTER write does: `clearConfigCache`, `restoreConfigToDevice` and
-`determineParameter` answer `-1 Generic error` there, exactly as hmipserver does - they are BidCos
-methods that hmipserver lists but does not implement.
-
-`sim.getPoisonedChannels(iface)` lists the channels whose stored MASTER carries a parameter their
-description does not have. Deleting the device (`sim.removeDevice`) is the only thing that clears
-one, which is also true of the hardware: there, it means pairing the device again.
-
-## Fault codes, measured
-
-The interface processes' fault codes are not publicly specified, and the table in `lib/faults.js`
-used to be an educated guess. It is a measurement now (Homematic Manager task 6, firmware 3.89.8).
-The default table is **hmipserver's**, because that is the one an application has to survive:
-
-| key                | code | string                          | when                                                                               |
-| ------------------ | ---- | ------------------------------- | ---------------------------------------------------------------------------------- |
-| `unknownMethod`    | -1   | Invalid XML-RPC message         | no handler for the method name (hmipserver answers this without a faultCode)       |
-| `unknownInstance`  | -2   | Invalid device                  | address not known to this interface                                                |
-| `unknownParamset`  | -2   | Invalid device                  | the device has no such paramset                                                    |
-| `unknownLink`      | -2   | Invalid device                  | the two channels are not linked                                                    |
-| `unknownParameter` | -5   | Unknown Parameter for value key | the paramset has no such parameter                                                 |
-| `readOnly`         | -5   | Invalid parameter or value      | `OPERATIONS & 2` is not set                                                        |
-| `typeError`        | -5   | Invalid parameter or value      | value does not fit the parameter's `TYPE`                                          |
-| `outOfRange`       | -5   | Invalid parameter or value      | ENUM value not in `VALUE_LIST`                                                     |
-| `invalidValue`     | -5   | Invalid parameter or value      | the stored channel configuration cannot be transferred                             |
-| `notSupported`     | -1   | Generic error                   | a method this interface does not implement                                         |
-| `notReachable`     | -1   | Generic error (UNREACH)         | a sleeping battery device                                                          |
-| `invalidArguments` | -321 | Invalid arguments               | wrong number of arguments; hmipserver really answers a Java exception message here |
-
-rfd's table is exported as `BIDCOS_FAULTS` and differs in more than wording - it answers **no
-fault at all** for an unknown paramset name (it takes the name as a peer address), for a missing
-argument, and for a `setValue` on a read-only datapoint:
-
-```js
-const {FAULT_TABLES} = require('hm-simulator/lib/faults.js');
-new HmSim({faults: FAULT_TABLES.bidcos});
-```
-
-Every entry can still be replaced individually:
-
-```js
-new HmSim({faults: {unknownParameter: {faultCode: -4, faultString: 'Unknown parameter'}}});
-```
-
-## Device and radio health
-
-What the devices and the radio report over time - the service messages, levels and update states a
-client renders and reacts to:
-
-```js
-sim.setReachable('rfd', 'ABC0000001', false); // UNREACH (+ STICKY_UNREACH on BidCos) on :0
-sim.setReachable('rfd', 'ABC0000001', true); // UNREACH clears, STICKY_UNREACH stays for the client
-sim.setLowBattery('hmip', '0001D3C99C1234', true); // LOW_BAT or LOWBAT, whichever :0 has
-sim.setDutyCycle('rfd', 42); // listBidcosInterfaces' DUTY_CYCLE
-sim.setDutyCycle('hmip', 17); // ... and DUTY_CYCLE_LEVEL on the radio module's :0
-sim.setCarrierSense('hmip', 8); // CARRIER_SENSE_LEVEL, the same way
-sim.offerFirmware('hmip', '0001D3C99C1234', '1.6.0'); // a firmware update becomes available
-await sim.schedule([
-  {at: 1000, call: 'setReachable', args: ['rfd', 'ABC0000001', false]},
-  {at: 3000, call: 'setReachable', args: ['rfd', 'ABC0000001', true]},
-]);
-```
+### Device and radio health
 
 - A datapoint the `:0` channel's description has is stored and sent as the description says, and
   counts as a service message by its `FLAGS`; one it does not have is sent as an event and raised
@@ -293,42 +308,245 @@ await sim.schedule([
 - `schedule` runs any scenario call on the simulator's timer (`at` in milliseconds from now) and
   resolves with the results; `close()` cancels what did not run yet.
 
-## Interface processes misbehaving
+### Interface processes misbehaving
 
 For the code that has to survive an interface process that restarts, starts late, answers slowly or
 not at all - reconnects, re-inits, watchdogs, init retries:
 
 ```js
-await sim.stopInterface('hmip'); // the port refuses connections, open ones are reset
-await sim.startInterface('hmip', {forgetClients: true}); // up again on the same port
-await sim.restartInterface('rfd', {downMs: 2000, forgetClients: false}); // both, with a pause
 sim.injectFault({iface: 'rfd', method: 'init', times: 3, fault: 'unknownInstance'});
 sim.injectFault({iface: 'hmip', method: '*', delayMs: 1500}); // answer late
 sim.injectFault({method: 'getValue', hang: true}); // never answer
 sim.injectFault({method: 'listDevices', closeSocket: true}); // close the connection instead
-sim.clearFaults();
 ```
 
 - **Restarts.** With `forgetClients: true` (the default) a restarted process has forgotten every
-  registered client: no events until the client calls `init` again, and nothing tells it - which
-  is what a watchdog is for. With `forgetClients: false` it remembers them and calls each back as rfd
-  does when it starts with its handlers file: `system.listMethods` (BidCos), `listDevices`,
-  `newDevices`/`deleteDevices` - calls the client did not ask for, which is how it can tell that the
-  process restarted. `dropConnection()` stays what it was: forget the clients, reset the
-  connections, no pause.
-- **Late start.** `interfaces: {hmip: {startDelay: 5000}}` binds the port (so `sim.ports.hmip` is
-  known when `whenReady()` resolves) and refuses connections until the delay is over.
+  registered client: no events until the client calls `init` again. With `forgetClients: false`
+  it remembers them and calls each back as rfd does when it starts with its handlers file:
+  `system.listMethods` (BidCos), `listDevices`, `newDevices`/`deleteDevices` - calls the client did
+  not ask for, which is how it can tell that the process restarted.
+- **Late start.** `interfaces: {hmip: {startDelay: 5000}}` binds the port and refuses connections
+  until the delay is over.
 - **Injected faults** apply to the next `times` calls (default 1; `Infinity` or `-1` until
   `clearFaults()`) of `method` (`'*'` for any) on `iface` (every interface when omitted), over both
-  transports. `fault` is a name of the fault table or `{faultCode, faultString}`; `delayMs` can be
+  transports. `fault` is a key of the fault table or `{faultCode, faultString}`; `delayMs` can be
   combined with the others.
-- **PONG.** `ping` answers with a `CENTRAL`/`PONG` event to every registered client on the BidCos
-  interfaces and with nothing on hmipserver; `pong` and `pingDelay` change that per interface.
-- **The callback log.** `sim.getCallbackLog()` lists every call the simulator made to a client with
-  when it was sent and answered, so a test can assert that its callback server answers fast.
+- **The callback log** lists every call the simulator made to a client with when it was sent and
+  answered, so a test can assert that its callback server answers fast.
 
-**A callback server that hangs** (`listenerModel: 'measured'`). Measured on firmware 3.89.8
-(2026-09-25) with a callback server that accepts the connection and never answers:
+## Recipes
+
+Each assumes the quick start's `sim` with the lab fixture (`LAB0000002` is its HM-LC-Sw1-Pl-2,
+`LAB0000003` the HM-Sec-SC, `00000000000004` the HmIP-BBL) and a client of the code under test
+registered on the interface.
+
+**A device goes unreachable and comes back.**
+
+```js
+sim.setReachable('rfd', 'LAB0000002', false); // events UNREACH true, STICKY_UNREACH true on :0
+sim.setReachable('rfd', 'LAB0000002', true); // UNREACH false; STICKY_UNREACH stays
+// the client acknowledges: setValue('LAB0000002:0', 'STICKY_UNREACH', false) over RPC
+```
+
+**A sticky service message.** `sim.setServiceMessage('hmip', '00000000000004:0', 'CONFIG_PENDING',
+true)` sends the event, and `getServiceMessages` lists it until it is set `false` the same way.
+
+**A device is paired.**
+
+```js
+sim.scriptNewDevices('rfd', [device, channel0, channel1], 500);
+// the code under test calls setInstallMode(true, 60) - 500 ms later the clients get newDevices
+```
+
+or without the install mode, `sim.addDevice('rfd', device, channel0, channel1)`.
+
+**The interface process restarts.** `await sim.dropConnection('hmip')`, then assert that the code
+under test calls `init` again; `await sim.restartInterface('rfd', {downMs: 3000, forgetClients:
+false})` for a restart it has to notice from the callbacks.
+
+**CONFIG_PENDING after a MASTER write.** With `interfaces: {rfd: {configPendingDelay: 2000}}`, a
+`putParamset('LAB0000003', 'MASTER', {CYCLIC_INFO_MSG: true})` of the code under test raises
+`CONFIG_PENDING` on `LAB0000003:0` (an event, and `sim.getConfigPending('rfd')`), and 2 s later it
+clears, as when the device took the configuration.
+
+**What was written.**
+
+```js
+const writes = sim.getWriteLog().filter((entry) => entry.address === 'LAB0000003');
+assert.deepEqual(writes.at(-1).values, {CYCLIC_INFO_MSG: true});
+```
+
+**A smoke detector team.** Give the smoke channels of HM-Sec-SD-2 devices a `TEAM`
+(`'*<serial of the team>:1'`) and `TEAM_TAG: 'smoke_detector'`, and the team as a device of its own
+(`ADDRESS: '*<serial>'`, `TYPE: 'HM-Sec-SD-2-Team'`) whose team channel lists the members in
+`TEAM_CHANNELS`. `listTeams` answers the team devices, `setTeam(channel, team)` moves a detector
+and deletes a team nobody is left in, `setTeam(channel, '')` gives it a team of its own - with
+`newDevices`, `deleteDevices` and `updateDevice` to the clients. The shape is rfd's as read from a
+CCU3; when rfd deletes and creates the team devices is the simulator's model.
+
+## Device data and fixtures
+
+**What ships.** Without `devices` the library starts with no devices; the [command line](#command-line)
+loads the historical lists `data/devices-rfd.json` (only the CCU's own `HM-RCV-50`, firmware
+2.27.8, `BidCoS-RF:0..50`) and `data/devices-hmip.json` (six HmIP devices of 2017: HMIP-eTRV,
+HMIP-PS, HMIP-SWDO, HMIP-WTH, HmIP-SMI and a radio module). Without `paramsetDescriptions` both use
+`data/paramset-descriptions.json` (1855 descriptions). These stay as they are for compatibility;
+**tests should use a fixture**:
+
+| File                             | What                                                                                                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data/fixtures/lab-2026-09.json` | real devices of four test systems with the descriptions of their exact firmware, links and radio modules - the recommended one                                                    |
+| `data/fixtures/devices.json`     | generated from node-red-contrib-ccu's `paramsets.json`: real descriptions, synthesised channel indexes - HmIP-PDT, HmIPW-DRS8, HmIPW-DRI16, HmIPW-DRAP, HM-LC-Sw1-Pl, HM-CC-RT-DN |
+| `data/fixtures/lab-devices.json` | a real `listDevices` of two CCUs on firmware 3.89.8 (2026-09-05), no descriptions of its own - pass the ones of `devices.json` or the bundled set alongside                       |
+
+**`data/fixtures/lab-2026-09.json`**: four test systems (openccu-lite, the interface processes of
+OpenCCU 3.89.11) dumped with `tools/dump-ccu.js` on 2026-09-29 and merged - `listDevices`, the
+paramset descriptions of exactly the firmware every device runs (MASTER, VALUES, SERVICE, LINK;
+`getMissingParamsetDescriptions()` is empty without the fallback), the direct links and
+`listBidcosInterfaces`:
+
+| Interface    | Device types                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BidCos-RF    | HM-RCV-50 (the central, `BidCoS-RF:0..50`), HM-CC-TC, HM-Sec-SC, HM-LC-Sw1-Pl-2; five radio interfaces (types `CCU2`, `USB Interface`, `HMLGW2`)                               |
+| BidCos-Wired | HMW-RCV-50 (the central only)                                                                                                                                                  |
+| HmIP-RF      | HmIP-RCV-50 (the central), the radio modules RPI-RF-MOD and HmIP-RFUSB (twice), HmIP-HAP, HmIP-BBL, HMIP-WRC2 (three firmwares), HmIP-PDT, HmIPW-DRAP, HmIPW-DRI16, HmIPW-DRS8 |
+
+Links: WRC2s on the PDT, the BBL and a DRS8 channel, the PDT's and the BBL's internal links, and
+the Sw1's one on BidCos-RF. A real hmipserver lists one radio module; the merged set lists three,
+and `listBidcosInterfaces` names the first as the HmIP radio (its `ADDRESS` is `3014F711A0` + that
+module's device address, as on a CCU). Serials are anonymised consistently in their own shape -
+BidCos `LAB0000001`, HmIP `00000000000004` - link names are empty, and nothing else is changed.
+Real hardware's oddities stay: the CCU's own `HmIP-RCV-50` sends a trailing **empty string** in
+`CHILDREN`, for instance. The file is also a device file for the command line (`--devices`; add
+`--wired-port 0` or a port for BidCos-Wired).
+
+**How descriptions are found.** A description is looked up by
+`<interface>/<type>/<firmware>/<version>/<channel type>/<paramset>`, and a device reports the
+firmware it runs - which a description set often does not have. Such a device uses the description
+of the **nearest firmware** of the same type and `VERSION`: the highest one at or below its own,
+else the lowest one above it; firmware compared numerically part by part, a trailing build date
+(`3.41.11.20181222`) last. Each substitution is logged once at `warn`. A type with no description
+at all answers `-2` for its paramsets. `paramsetFallback: false` keeps the exact keys only, and
+`sim.getMissingParamsetDescriptions()` lists every paramset a device announces in `PARAMSETS`
+without an exact description, with the key used instead (`usedKey`, `null` when there is none):
+
+```js
+assert.deepEqual(sim.getMissingParamsetDescriptions(), []); // the fixture is complete
+```
+
+**Making a fixture from a CCU.** `tools/dump-ccu.js` (in the repository, not in the package):
+
+```
+node tools/dump-ccu.js --rfd xmlrpc_bin://127.0.0.1:2001 --hmip xmlrpc://127.0.0.1:2010 \
+    --virtual xmlrpc://127.0.0.1:9292/groups --out my-ccu.json
+```
+
+Every interface may be given more than once to merge several systems; `--types` keeps only the
+device types listed, `--keep-serials` switches the anonymisation off, `--help` lists the rest. It
+only reads (`listDevices`, `getParamsetDescription`, `getLinks`, `listBidcosInterfaces`), and it
+refuses to write a file in which anything shaped like a serial, an HmIP address or an SGTIN is left
+that it did not put there itself. The rest of a CCU's identity - host names, addresses, keys - is
+never read.
+
+**Making a fixture from descriptions.** `tools/fixtures-from-paramsets.js` builds devices from a
+paramset description dump: node-red-contrib-ccu writes every description it ever read into
+`paramsets.json` in its Node-RED user directory (and its repository carries one), keyed the same
+way.
+
+```
+node tools/fixtures-from-paramsets.js --source ../node-red-contrib-ccu/paramsets.json \
+    --types HmIP-PDT,HM-LC-Sw1-Pl --out data/fixtures/devices.json
+node tools/fixtures-from-paramsets.js --source ../node-red-contrib-ccu/paramsets.json --list
+```
+
+Such a dump knows the channel _types_ of a device but never their _indexes_, so the channel layout
+comes from `tools/device-layouts.json`. An entry with a `channels` list is the real layout of the
+hardware, read from a `listDevices` dump (HmIP-PDT, HmIP-WRC2, HmIPW-DRS8, HmIPW-DRI16, HmIPW-DRAP,
+HM-CC-TC, HM-Sec-SC); everything else is synthesised from `order` and `counts` - consistent within
+a fixture, not guaranteed to match the hardware. **A device type** is added with an entry there and
+a run of the generator, or, better, by dumping a CCU that has one.
+
+## Interface behaviour, measured
+
+Where the simulator imitates an interface process, this says whether the shape was measured on a
+CCU or is the simulator's model. The measurements were made for Homematic Manager (tasks 6 and 58)
+on CCUs with firmware 3.89.8 and 3.89.x.
+
+### CONFIG_PENDING
+
+What a `putParamset MASTER` does, per interface (`interfaces.<iface>.configPendingMode`):
+
+| `configPendingMode` | what a `putParamset MASTER` does                                                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `'hmip'`            | measured hmipserver: stores everything, faults when the result is not transferable, poisons the channel on an unknown parameter, sticky `CONFIG_PENDING` on a wrong type, no range check |
+| `'bidcos'`          | measured rfd: no fault, unknown parameters dropped, values clamped or ignored, `CONFIG_PENDING` while the change is queued                                                               |
+| `'strict'`          | a model: an invalid write is answered with a fault and nothing is written                                                                                                                |
+| `'pending'`         | a model: the write is accepted, the valid parameters are stored, the rejected ones are recorded, and a sticky `CONFIG_PENDING` is raised                                                 |
+
+- **hmipserver stores what it rejects.** Everything in the struct is written into its own
+  configuration for the channel first; the fault comes afterwards, when the result cannot be
+  transferred to the device. A parameter the channel does not have is stored **for ever** - it
+  survives a restart, no RPC method removes it, and from then on every `putParamset` on that
+  channel faults, including one with an empty struct (`sim.getPoisonedChannels(iface)`; deleting
+  the device is the only cure, on the hardware too). A value of the wrong type raises a sticky
+  `CONFIG_PENDING`, which a valid full MASTER write clears. A number outside `MIN`..`MAX` is
+  accepted without a word.
+- **rfd never faults on a value.** It drops a parameter the device does not have, ignores what it
+  cannot use, clamps numbers into `MIN`..`MAX` and coerces strings - and answers `ok` to all of
+  it. `CONFIG_PENDING` there means "a configuration is queued for the device" and clears when the
+  device takes it (`configPendingDelay`), which on a battery device is when it next wakes up.
+- In `'strict'` and `'pending'` a sticky `CONFIG_PENDING` clears on a valid full MASTER write, on
+  `clearConfigCache(deviceAddress)` or on `restoreConfigToDevice(deviceAddress)`. In `'hmip'` only
+  the valid full MASTER write does: `clearConfigCache`, `restoreConfigToDevice` and
+  `determineParameter` answer `-1 Generic error` there, exactly as hmipserver does.
+
+The two models are the explanations that competed before the measurement (Homematic Manager issue
+#98); they stay for applications that want to test against them.
+
+### Fault codes
+
+The default table is **hmipserver's**, because that is the one an application has to survive
+(measured):
+
+| key                | code | string                          | when                                                                               |
+| ------------------ | ---- | ------------------------------- | ---------------------------------------------------------------------------------- |
+| `unknownMethod`    | -1   | Invalid XML-RPC message         | no handler for the method name (hmipserver answers this without a faultCode)       |
+| `unknownInstance`  | -2   | Invalid device                  | address not known to this interface                                                |
+| `unknownParamset`  | -2   | Invalid device                  | the device has no such paramset                                                    |
+| `unknownLink`      | -2   | Invalid device                  | the two channels are not linked                                                    |
+| `unknownParameter` | -5   | Unknown Parameter for value key | the paramset has no such parameter                                                 |
+| `readOnly`         | -5   | Invalid parameter or value      | `OPERATIONS & 2` is not set                                                        |
+| `typeError`        | -5   | Invalid parameter or value      | value does not fit the parameter's `TYPE`                                          |
+| `outOfRange`       | -5   | Invalid parameter or value      | ENUM value not in `VALUE_LIST`                                                     |
+| `invalidValue`     | -5   | Invalid parameter or value      | the stored channel configuration cannot be transferred                             |
+| `notSupported`     | -1   | Generic error                   | a method this interface does not implement                                         |
+| `notReachable`     | -1   | Generic error (UNREACH)         | a sleeping battery device                                                          |
+| `invalidArguments` | -321 | Invalid arguments               | wrong number of arguments; hmipserver really answers a Java exception message here |
+
+Over XML-RPC a fault is an XML-RPC fault, over BIN-RPC a message of type `0xff` with a
+`faultCode`/`faultString` struct. rfd's table is exported as `BIDCOS_FAULTS` and differs in more
+than wording - it answers **no fault at all** for an unknown paramset name (it takes the name as a
+peer address), for a missing argument, and for a `setValue` on a read-only datapoint:
+
+```js
+const {FAULT_TABLES} = require('hm-simulator/lib/faults.js');
+new HmSim({faults: FAULT_TABLES.bidcos});
+new HmSim({faults: {unknownParameter: {faultCode: -4, faultString: 'Unknown parameter'}}}); // one entry
+```
+
+### Service messages
+
+`getServiceMessages` answers `[[address, datapoint, value]]`: every datapoint whose description
+flags it as a service message and whose value is set, plus what `setServiceMessage` and the
+`serviceMessages` option add. rfd answers an empty **string** rather than an empty array when
+nothing is pending (measured); `serviceMessagesEmptyAsString: true` does the same - off by default,
+because it breaks every client that assumes an array, which is why a client should be tested with it
+once. Teams (`listTeams`) have the shape rfd was read to have on a CCU3.
+
+### A callback server that hangs
+
+`interfaces.<iface>.listenerModel: 'measured'`. Measured on firmware 3.89.8 (2026-09-25) with a
+callback server that accepts the connection and never answers:
 
 | interface      | what happens                                                                                                                                                                                                                                                                                                                                |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -338,113 +556,60 @@ sim.clearFaults();
 That `listDevices` also comes before rfd answers the `init` is the simulator's model, not a
 measurement; so is everything with the default `'isolated'`, where every client is on its own.
 
-## Fixtures
+### The calls of openccu-lite's daemon
 
-`data/devices-rfd.json` and `data/devices-hmip.json` (the historical device lists) and
-`data/paramset-descriptions.json` (1855 descriptions) ship with the package and are unchanged.
+`logLevel` (rfd and hs485d answer the level, 5 until one is set; hmipserver an empty string),
+`changeKey` (rfd, hmipserver; recorded in `sim.keyChanges`) and `refreshDeployedDeviceFirmwareList`
+(rfd, hmipserver; recorded in `sim.firmwareListRefreshes`) answer as the interfaces were measured to
+on firmware 3.89.x; the simulator does no cryptography and loads no firmware.
 
-A description is looked up by `<interface>/<type>/<firmware>/<version>/<channel type>/<paramset>`,
-and a device reports the firmware it runs - which a description set often does not have (the
-bundled `HM-RCV-50` has firmware 2.27.8, the bundled descriptions start at 2.31.25). Such a device
-uses the description of the **nearest firmware** of the same type and `VERSION`: the highest one at
-or below its own, else the lowest one above it; firmware compared numerically part by part, a
-trailing build date (`3.41.11.20181222`) last. Each substitution is logged once at `warn`. A type
-with no description at all still answers `-2` for its paramsets. `paramsetFallback: false` keeps
-the exact keys only, and `sim.getMissingParamsetDescriptions()` lists every paramset a device
-announces in `PARAMSETS` that has no exact description, with the key used instead (`usedKey`,
-`null` when there is none) - an empty list means a fixture is complete:
+## ReGa mock
 
-```js
-assert.deepEqual(sim.getMissingParamsetDescriptions(), []);
-```
+`rega: {port: 8181, ...}` starts an HTTP server that answers `POST /<name>.exe` as the CCU's
+`rega.exe` does - the script output followed by an `<xml>` block - for the scripts of the
+[homematic-rega](https://github.com/hobbyquaker/homematic-rega) client, recognised by their first
+line. Each answers the option of the same name:
 
-`data/fixtures/devices.json` is generated from node-red-contrib-ccu's `paramsets.json` and contains
-real descriptions for HmIP-PDT, HmIPW-DRS8, HmIPW-DRI16, HmIPW-DRAP, HM-LC-Sw1-Pl and HM-CC-RT-DN:
+| first line          | client call      | option      | one element                                                                       |
+| ------------------- | ---------------- | ----------- | --------------------------------------------------------------------------------- |
+| `!# devices.rega`   | `getChannels()`  | `channels`  | `{id: 1001, address: 'LAB0000002:1', name: 'Plug'}`                               |
+| `!# variables.rega` | `getVariables()` | `variables` | `{id: 950, name: 'Presence', val: true, ts: '2026-01-01 12:00:00'}`               |
+| `!# programs.rega`  | `getPrograms()`  | `programs`  | `{id: 2000, name: 'Lights off', active: true}`                                    |
+| `!# rooms.rega`     | `getRooms()`     | `rooms`     | `{id: 20, name: 'Hall', channels: [1001]}`                                        |
+| `!# functions.rega` | `getFunctions()` | `functions` | `{id: 30, name: 'Light', channels: [1001]}`                                       |
+| `!# values.rega`    | `getValues()`    | `values`    | `{name: 'BidCos-RF.LAB0000002:1.STATE', value: false, ts: '2026-01-01 12:00:00'}` |
 
-```js
-const fixture = require('hm-simulator/data/fixtures/devices.json');
-const sim = new HmSim({devices: fixture.devices, paramsetDescriptions: fixture.paramsetDescriptions});
-```
+Of the other scripts, these are applied to the mock's state: `dom.GetObject(id).State(value)` (a
+variable), `.Name("...")` (any object; also recorded in `sim.regaSim.renames` as `{id, name,
+script}`), `.Active(true|false)` and `.ProgramExecute()` (a program). Every script, applied or not,
+is recorded in `sim.regaSim.scripts` and anything else is answered with an empty output. `rega`
+also takes `listenAddress`, `tls` and `auth` (inherited from the simulator's when not given);
+`sim.regaSim.port` is the port once `whenReady()` resolved.
 
-Regenerate or extend it with
+## TLS and basic auth
 
-```
-node tools/fixtures-from-paramsets.js --source ../node-red-contrib-ccu/paramsets.json \
-    --types HmIP-PDT,HM-LC-Sw1-Pl --out data/fixtures/devices.json
-node tools/fixtures-from-paramsets.js --source ../node-red-contrib-ccu/paramsets.json --list
-```
+`tls: true` serves every XML-RPC server - hmipserver, VirtualDevices, the XML-RPC half of rfd's and
+BidCos-Wired's ports - and the ReGa mock over HTTPS; BIN-RPC has no TLS and stays plain, as on a
+CCU. The certificate is self-signed, for `localhost`/`127.0.0.1`, generated per run and available
+as `sim.tls.cert` (PEM; `--tls-cert-out <file>` on the command line), so a client either trusts
+that or connects with `rejectUnauthorized: false`. `tls: {key, cert}` uses your own pair instead.
 
-A paramset description dump knows the channel _types_ of a device but never their _indexes_, so
-the channel layout comes from `tools/device-layouts.json`. An entry with a `channels` list is the
-real layout of the hardware, read from a `listDevices` dump; the seven device types of the
-Homematic Manager lab (HmIP-PDT, HmIP-WRC2, HmIPW-DRS8, HmIPW-DRI16, HmIPW-DRAP, HM-CC-TC,
-HM-Sec-SC) have one since 2026-09-05. Everything else is synthesised from `order` and `counts`:
-consistent within a fixture (`CHILDREN`, `PARENT` and `INDEX` always agree), not guaranteed to
-match the hardware. Correcting an entry from a `listDevices` dump is a one line change there.
+`auth: {username, password}` requires HTTP basic auth on the same servers (the XML-RPC ones and
+ReGa); BIN-RPC has none. Callbacks to `https://` urls are made with `rejectUnauthorized: false`.
 
-`data/fixtures/lab-devices.json` is such a dump: `listDevices` as two CCUs on firmware 3.89.8
-answered it, with the serials anonymised and nothing else touched. It has no paramset
-descriptions - pass the ones from `devices.json` or the bundled set alongside:
+## Behaviour scripts
 
-```js
-const lab = require('hm-simulator/data/fixtures/lab-devices.json');
-const fixture = require('hm-simulator/data/fixtures/devices.json');
-const sim = new HmSim({devices: lab.devices, paramsetDescriptions: fixture.paramsetDescriptions});
-```
-
-It is also where the oddities live that only real hardware produces - the CCU's own `HmIP-RCV-50`
-sends a trailing **empty string** in `CHILDREN`, for instance.
-
-`data/fixtures/lab-2026-09.json` is the complete one: four test systems (openccu-lite, the
-interface processes of OpenCCU 3.89.11) dumped with `tools/dump-ccu.js` on 2026-09-29 and merged -
-`listDevices`, the paramset descriptions of exactly the firmware every device runs (MASTER, VALUES,
-SERVICE, LINK; `getMissingParamsetDescriptions()` is empty without the fallback), the direct links
-and `listBidcosInterfaces`. Its devices:
-
-| Interface    | Device types                                                                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| BidCos-RF    | HM-RCV-50 (the central, `BidCoS-RF:0..50`), HM-CC-TC, HM-Sec-SC, HM-LC-Sw1-Pl-2; five radio interfaces (types `CCU2`, `USB Interface`, `HMLGW2`)                               |
-| BidCos-Wired | HMW-RCV-50 (the central only)                                                                                                                                                  |
-| HmIP-RF      | HmIP-RCV-50 (the central), the radio modules RPI-RF-MOD and HmIP-RFUSB (twice), HmIP-HAP, HmIP-BBL, HMIP-WRC2 (three firmwares), HmIP-PDT, HmIPW-DRAP, HmIPW-DRI16, HmIPW-DRS8 |
-
-Links: WRC2s on the PDT, the BBL and a DRS8 channel, the PDT's and the BBL's internal links, and
-the Sw1's one on BidCos-RF. A real
-hmipserver lists one radio module; the merged set lists three, and `listBidcosInterfaces` names
-the first as the HmIP radio (its `ADDRESS` is `3014F711A0` + that module's device address, as on a
-CCU). Serials are anonymised consistently in their own shape - BidCos `LAB0000001`, HmIP
-`00000000000004` - link names are empty, and nothing else is changed. The file is a device file
-for the command line (`--devices`, add `--wired-port 0` or a port for BidCos-Wired) and carries
-the constructor options of the same names:
-
-```js
-const lab = require('hm-simulator/data/fixtures/lab-2026-09.json');
-const sim = new HmSim({
-  devices: structuredClone(lab.devices), // the simulator changes the lists it is given
-  paramsetDescriptions: lab.paramsetDescriptions,
-  links: structuredClone(lab.links),
-  bidcosInterfaces: lab.bidcosInterfaces,
-  config: {binrpcListenPort: 0, xmlrpcListenPort: 0, wiredListenPort: 0},
-});
-```
-
-`tools/dump-ccu.js` (in the repository, not in the package) makes such a file from any CCU:
-
-```
-node tools/dump-ccu.js --rfd xmlrpc_bin://127.0.0.1:2001 --hmip xmlrpc://127.0.0.1:2010 \
-    --virtual xmlrpc://127.0.0.1:9292/groups --out my-ccu.json
-```
-
-Every interface may be given more than once to merge several systems; `--types` keeps only the
-device types listed, `--keep-serials` switches the anonymisation off, and `--help` lists the rest.
-It only reads (`listDevices`, `getParamsetDescription`, `getLinks`, `listBidcosInterfaces`), and it
-refuses to write a file in which anything shaped like a serial, an HmIP address or an SGTIN is left
-that it did not put there itself. The rest of a CCU's identity - host names, addresses, keys - is
-never read.
+A behaviour script is a module in `behaviorPath` that exports `api => {...}` and makes devices act
+on their own with `api.emit('setValue', iface, address, datapoint, value)` - a device report, so it
+may set datapoints a client could not write (`PRESS_SHORT`, `UNREACH`). **They are on by default:**
+without `behaviorPath` the two examples in the package's `behaviors/` load and press `BidCoS-RF:1`
+every 5 s and toggle `0000D3C98C9233:1` every 60 s - events a test did not ask for, and timers that
+keep the process alive. Pass `behaviorPath: false` (or `--no-behaviors`) in tests.
 
 ## Command line
 
 ```
-hm-simulator [options]
+Usage: hm-simulator [options]
 
   --listen-address <ip>     default 127.0.0.1
   --binrpc-port <port>      rfd (BIN-RPC and XML-RPC), default 2001
@@ -475,14 +640,14 @@ hm-simulator [options]
 Unlike the library, the CLI listens on `127.0.0.1`, starts the ReGa mock on 8181 and loads the
 bundled device lists unless `--devices` or `--config` says otherwise.
 
-**Out of process** - for a test whose code under test cannot `require()` the simulator (a daemon
-in another language, a spawned service): start it with every port `0` and `--ports-json -`, wait
-for the first line on stdout, and read the ports from it:
+**Out of process** - start it with every port `0` and `--ports-json -`, wait for the first line on
+stdout, and read the ports from it:
 
 ```
-$ hm-simulator --binrpc-port 0 --xmlrpc-port 0 --rega-port 0 --no-behaviors \
-    --devices node_modules/hm-simulator/data/fixtures/devices.json --control-port 0 --ports-json -
-{"rfd":40123,"hmip":40124,"rega":40125,"control":40126}
+$ hm-simulator --binrpc-port 0 --xmlrpc-port 0 --no-rega --no-behaviors \
+    --devices node_modules/hm-simulator/data/fixtures/lab-2026-09.json --wired-port 0 \
+    --control-port 0 --ports-json -
+{"rfd":40123,"wired":40124,"hmip":40125,"control":40126}
 ```
 
 `--ports-json <file>` writes the same object to a file instead (atomically: a reader never sees
@@ -490,31 +655,36 @@ half of it). A port that is taken ends the process with exit code 1 and the addr
 message. `SIGTERM` and `SIGINT` close every server and exit 0.
 
 `--config` takes the constructor options as a file; `devices` and `paramsetDescriptions` in it may
-be paths (relative to the file), `devices` a device file as for `--devices`. The flags win over the
-file:
+be paths (relative to the file), `devices` a device file as for `--devices`. Everything without a
+flag of its own - `interfaces`, `faults`, `serviceMessages`, `newDevices`, `rega`'s data - goes
+there. The flags win over the file:
 
 ```json
 {
-  "devices": "node_modules/hm-simulator/data/fixtures/devices.json",
+  "devices": "node_modules/hm-simulator/data/fixtures/lab-2026-09.json",
   "interfaces": {"rfd": {"serviceMessagesEmptyAsString": true}},
-  "links": {"rfd": []}
+  "rega": {"variables": [{"id": 950, "name": "Presence", "val": true}]}
 }
 ```
 
-**The control port** (`--control-port`, loopback only) is the [scenario API](#scenario-api) over
-HTTP: `POST /scenario/<call>` with a JSON array of the arguments, `GET /scenario/<call>` for one
-without arguments. The answer is `{"result": ...}`; a fault is `400` with `faultCode` and
-`faultString`, an unknown call `404`. `GET /ports` answers the ports. The calls:
-`addDevice`, `removeDevice`, `fireEvent`, `setValue` (the device reporting a value, as a behaviour
-script does), `setServiceMessage`, `scriptNewDevices`, `dropConnection`, `getDevice`,
-`getWriteLog`, `getConfigPending`, `getPoisonedChannels`, `getMissingParamsetDescriptions`,
-`getTempKey`, `getInstallMode`.
+### The control port
+
+`--control-port` (loopback only) is the [scenario API](#scenario-api) over HTTP:
+`POST /scenario/<call>` with a JSON array of the arguments, `GET /scenario/<call>` for one without
+arguments. The answer is `{"result": ...}`; a fault is `400` with `faultCode` and `faultString`, an
+unknown call `404`. `GET /ports` answers the ports. The calls: `addDevice`, `removeDevice`,
+`fireEvent`, `fireEvents`, `setValue` (the device reporting a value, as a behaviour script does),
+`setServiceMessage`, `scriptNewDevices`, `dropConnection`, `stopInterface`, `startInterface`,
+`restartInterface`, `injectFault`, `clearFaults`, `setReachable`, `setLowBattery`, `setDutyCycle`,
+`setCarrierSense`, `offerFirmware`, `schedule`, `getDevice`, `getWriteLog`, `getConfigPending`,
+`getPoisonedChannels`, `getMissingParamsetDescriptions`, `getCallbackLog`, `getTempKey`,
+`getInstallMode`.
 
 ```
-curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "PRESS_SHORT", true]'
+curl -s -X POST localhost:40126/scenario/setReachable -d '["rfd", "LAB0000002", false]'
 ```
 
-## Compatibility
+## Upgrading from 0.x
 
 - `require('hm-simulator/sim')` and `require('hm-simulator/sim.js')` keep returning the `HmSim`
   class; `sim.mjs` is the ESM entry point.
@@ -534,110 +704,14 @@ curl -s -X POST localhost:40126/scenario/fireEvent -d '["rfd", "BidCoS-RF:1", "P
   and the rest of the table above. An unknown method now answers a fault instead of an empty string.
 - Node >= 20.19. `binrpc` 4 and `homematic-xmlrpc` 2 are the only runtime dependencies.
 
-## Changelog
-
-### Unreleased
-
-- `data/fixtures/lab-2026-09.json`: the devices of four test systems with the paramset
-  descriptions of their exact firmware, their direct links and radio modules - the CCU centrals,
-  RPI-RF-MOD, HmIP-RFUSB, HmIP-HAP, HmIP-BBL, HMIP-WRC2, HmIP-PDT, HmIPW-DRAP/-DRI16/-DRS8,
-  HM-CC-TC, HM-Sec-SC, HM-LC-Sw1-Pl-2 - anonymised. `tools/dump-ccu.js` makes such a fixture from
-  any CCU (read only, anonymised unless told otherwise). A device file given to `--devices` brings
-  its `links` and `bidcosInterfaces` along.
-- The calls openccu-lite's daemon makes: `logLevel` (rfd and hs485d answer the level, 5 until set;
-  hmipserver an empty string), `changeKey` (rfd, hmipserver; recorded in `sim.keyChanges`) and
-  `refreshDeployedDeviceFirmwareList` (rfd, hmipserver; recorded in
-  `sim.firmwareListRefreshes`), with the interfaces measured on a CCU with firmware 3.89.x.
-- `init` keeps the path of an XML-RPC callback url (`http://host:port/cb/BidCos-RF`; the path used
-  to end up in the port), takes `https://`, and identifies a registration by its url exactly, scheme
-  included, as the interface processes do - an `init(url, '')` with another scheme no longer removes
-  it. A url that is none is a fault.
-- An XML-RPC request declared ISO-8859-1 is read as ISO-8859-1 instead of UTF-8.
-- Device and radio health: `setReachable` (UNREACH, and STICKY_UNREACH on BidCos until a client
-  clears it; `unreachWrites: 'fault'` answers writes with notReachable), `setLowBattery`,
-  `setDutyCycle` and `setCarrierSense` (in `listBidcosInterfaces` and, on hmip, as the radio
-  module's `DUTY_CYCLE_LEVEL`/`CARRIER_SENSE_LEVEL`), `offerFirmware` with the update states
-  `updateFirmware`/`installFirmware` then walk through, and `schedule` for a timeline of scenario
-  calls.
-- Interface processes that misbehave: `stopInterface`, `startInterface` and `restartInterface`
-  (forgetting the registered clients, or calling them back as rfd does after a restart),
-  `interfaces.<iface>.startDelay`, `pong` and `pingDelay`, `injectFault` (delay, hang, fault,
-  closed connection, for the next calls of a method) and `clearFaults`, and
-  `listenerModel: 'measured'`: what hmipserver and rfd do with a callback server that hangs
-  (hmipserver holds every client's events back, rfd stops answering). `getCallbackLog()` records
-  every call to a client with its timing, `fireEvents()` sends bursts as `system.multicall` batches.
-- The command line is usable out of process: every port may be `0`, `--ports-json <file|->`
-  reports the ports once every server listens, `--config` and `--devices` load options and device
-  files, `--wired-port`, `--tls` with `--tls-cert-out`, `--auth`, `--behavior-path`,
-  `--no-behaviors`, and `--control-port` serves the scenario API over HTTP on the loopback. A taken
-  port exits 1 with the address in the message. `behaviorPath: false` starts no behaviour scripts.
-- An ENUM whose description gives `DEFAULT` as the index (1088 of the 5624 ENUMs in the bundled
-  descriptions) started at `-1` instead of that index, so a thermostat's `FAULT_REPORTING` was a
-  service message from the start.
-- rfd and BidCos-Wired answer BIN-RPC and XML-RPC on the same port, as on a CCU, so a client
-  that talks XML-RPC to rfd can be tested too; the callbacks follow the URL a client registered
-  with, whichever protocol it registered over. With `tls` the XML-RPC half is HTTPS, BIN-RPC stays
-  plain. `interfaces.<iface>.protocols` narrows a port to one of them.
-- A device whose firmware has no paramset description uses the description of the nearest
-  firmware of the same type and `VERSION` instead of answering `-2 Invalid device` for every
-  channel `listDevices` reports; the bundled CCU virtual remote (`HM-RCV-50` 2.27.8,
-  `BidCoS-RF:1..50`) works again. `paramsetFallback: false` switches it off,
-  `sim.getMissingParamsetDescriptions()` lists what is not matched exactly (reported in #1 by
-  @Hypnos3, cause found by @foxriver76).
-
-### 1.1.0
-
-- `setTempKey` on the BidCos interfaces: the passphrase a device is taught in with, applied to
-  the pairings that follow; `sim.getTempKey(iface)` reads back what was set, an empty string
-  clears it. No cryptography. hmipserver has no such method, so it faults with unknown-method
-  there (Homematic Manager issue #20).
-- Smoke detector teams on the BidCos interfaces: `listTeams` and `setTeam`. A channel with a
-  `TEAM_TAG` is in the team its `TEAM` names, a pseudo device `*<serial>` whose team channel lists
-  the members in `TEAM_CHANNELS`; `setTeam(channel, team)` moves it and deletes a team nobody is
-  left in, `setTeam(channel, '')` puts it back into a team of its own, created like the one it
-  left (`newDevices`, `deleteDevices`, `updateDevice` to the logic layers). The shape is rfd's
-  as Homematic Manager task 58 read it from a CCU3; when rfd deletes and creates the team devices
-  is the simulator's model, not a measurement.
-
-### 1.0.0
-
-- Node >= 20.19, `binrpc` ^4.2, `homematic-xmlrpc` ^2.0; `express`, `body-parser`, `request`,
-  `async` and `yalm` removed. The ReGa mock runs on `node:http`, the CLI logs through `console`.
-- Paramset state per device and channel for MASTER, VALUES, SERVICE and the link paramsets, with
-  type, range, `VALUE_LIST` and `OPERATIONS` checks on every write.
-- `CONFIG_PENDING` semantics, configurable per interface: `'hmip'` and `'bidcos'` are what the
-  two interface processes of a CCU on firmware 3.89.8 were measured to do (Homematic Manager task
-  6, 2026-09-05), `'strict'` and `'pending'` are the two hypotheses that measurement replaced.
-  `getPoisonedChannels()` for the channel an unknown parameter destroyed.
-- Fault codes and strings measured on the same firmware, hmipserver's as the default table and
-  rfd's as `BIDCOS_FAULTS`.
-- `data/fixtures/lab-devices.json`: an anonymised real `listDevices` of two CCUs, and the channel
-  layouts in `tools/device-layouts.json` corrected from it.
-- Links: `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`,
-  `activateLinkParamset`, and link paramsets addressed by the peer's address.
-- Interface and service methods: `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`,
-  `getServiceMessages`, `setInstallMode`/`getInstallMode` with scripted `newDevices`,
-  `deleteDevice`, `replaceDevice`, `reportValueUsage`, `updateFirmware`, `installFirmware`,
-  `clearConfigCache`, `restoreConfigToDevice`, `determineParameter`, `getDeviceDescription`,
-  `getValue`, `system.methodHelp`, `system.multicall`.
-- Fault responses on both transports, with an overridable fault table.
-- VirtualDevices and CUxD servers, BidCos-Wired, optional TLS with a generated certificate and
-  optional HTTP basic auth.
-- ReGa mock with `getChannels`, `getValues`, rename/program scripts and a script log.
-- Scenario API: `addDevice`, `removeDevice`, `fireEvent`, `setServiceMessage`, `scriptNewDevices`,
-  `dropConnection`, `getWriteLog`, `getConfigPending`.
-- `whenReady()`, port `0` support and `sim.ports`.
-- Fixture generator `tools/fixtures-from-paramsets.js` and generated real device fixtures.
-- ESLint 9 + Prettier, `node --test`, GitHub Actions on Node 20/22/24.
-
-### 0.1.1 and earlier
-
-`init`, `ping`, `system.listMethods`, `getParamsetDescription`, `listDevices`, `setValue`, events
-through behaviour scripts, ReGa mock.
-
 ## Contributing
 
-Pull requests welcome. `npm run lint` and `npm test` have to pass.
+Pull requests welcome. `npm run lint` and `npm test` have to pass; a new RPC method or scenario call
+comes with a test over both transports where it applies.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
