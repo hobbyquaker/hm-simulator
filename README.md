@@ -301,8 +301,12 @@ hm-simulator [options]
 
 ## Changelog
 
-### Unreleased
+### 1.1.0
 
+- `setTempKey` on the BidCos interfaces: the passphrase a device is taught in with, applied to
+  the pairings that follow; `sim.getTempKey(iface)` reads back what was set, an empty string
+  clears it. No cryptography. hmipserver has no such method, so it faults with unknown-method
+  there (Homematic Manager issue #20).
 - Smoke detector teams on the BidCos interfaces: `listTeams` and `setTeam`. A channel with a
   `TEAM_TAG` is in the team its `TEAM` names, a pseudo device `*<serial>` whose team channel lists
   the members in `TEAM_CHANNELS`; `setTeam(channel, team)` moves it and deletes a team nobody is
@@ -328,8 +332,7 @@ hm-simulator [options]
 - Links: `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`,
   `activateLinkParamset`, and link paramsets addressed by the peer's address.
 - Interface and service methods: `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`,
-  `getServiceMessages`, `setInstallMode`/`getInstallMode` with scripted `newDevices`, `setTempKey`
-  (the BidCos processes only; `sim.getTempKey(iface)` reads back what was set),
+  `getServiceMessages`, `setInstallMode`/`getInstallMode` with scripted `newDevices`,
   `deleteDevice`, `replaceDevice`, `reportValueUsage`, `updateFirmware`, `installFirmware`,
   `clearConfigCache`, `restoreConfigToDevice`, `determineParameter`, `getDeviceDescription`,
   `getValue`, `system.methodHelp`, `system.multicall`.
