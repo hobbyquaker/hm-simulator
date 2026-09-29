@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.2.0
 
 - The README is rewritten for the test author (quick start, connecting a client, the scenario API
   grouped, recipes, the fixtures, what is measured and what is the simulator's model), and the
