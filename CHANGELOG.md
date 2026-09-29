@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.3.0
 
 - The calls Homematic Manager makes, measured on rfd and hmipserver of firmware 3.89.11:
   `getKeyMismatchDevice` with the scenario call `scriptKeyMismatch` (a device that holds another
