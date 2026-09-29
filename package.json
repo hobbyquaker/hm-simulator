@@ -3,6 +3,7 @@
   "version": "1.2.0",
   "description": "Simulates a Homematic CCU (rfd, hmipserver, VirtualDevices, CUxD, ReGa) for automated tests",
   "main": "sim.js",
+  "types": "./sim.d.ts",
   "preferGlobal": true,
   "bin": {
     "hm-simulator": "./index.js"
@@ -13,9 +14,10 @@
   "scripts": {
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write . && eslint --fix .",
-    "test": "node --test test/*.test.js",
+    "test": "node --test test/*.test.js && npm run test:types",
     "test:watch": "node --test --watch test/*.test.js",
-    "fixtures": "node tools/fixtures-from-paramsets.js"
+    "fixtures": "node tools/fixtures-from-paramsets.js",
+    "test:types": "tsc -p test/types"
   },
   "repository": {
     "type": "git",
@@ -44,6 +46,8 @@
     "index.js",
     "sim.js",
     "sim.mjs",
+    "sim.d.ts",
+    "sim.d.mts",
     "lib/",
     "data/",
     "behaviors/",
@@ -57,9 +61,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@types/node": "^20.19.43",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3"
   }
 }

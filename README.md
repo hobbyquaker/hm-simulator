@@ -38,6 +38,10 @@ Prerequisites: [Node.js](https://nodejs.org) >= 20.19.
 npm install --save-dev hm-simulator
 ```
 
+TypeScript declarations ship with the package (`sim.d.ts`, `sim.d.mts`, `lib/faults.d.ts`): the
+options, the scenario API, the introspection calls and the description types are under the `HmSim`
+namespace (`HmSim.Options`, `HmSim.DeviceDescription`, `HmSim.ParamsetDescription`, ...).
+
 A test file with `node:test` - the same shape works with mocha (`before`/`after`) and vitest
 (`beforeAll`/`afterAll`):
 

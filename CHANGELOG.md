@@ -14,6 +14,10 @@ GitHub release notes.
   option; `listReplaceableDevices`; `getVersion` (`interfaces.<iface>.version`); `getLGWStatus`
   (only with `interfaces.<iface>.lgwStatus` - rfd 3.89.11 does not know it); `setInterfaceClock`
   (recorded in `sim.interfaceClocks`).
+- TypeScript declarations: `sim.d.ts` (the `types` of the package), `sim.d.mts` for `sim.mjs` and
+  `lib/faults.d.ts`, covering the options, the scenario API, the introspection calls and the
+  description types. `npm test` type-checks them against a file that uses every export
+  (`test/types/`), and a test fails when an option or scenario call is missing from them.
 - `interfaces.<iface>.getServiceMessagesFault: true` answers `getServiceMessages` with
   `Invalid XML-RPC message`, as VirtualDevices, CUxD and hmipserver were seen to on 3.89.x.
 
