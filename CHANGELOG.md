@@ -3,6 +3,20 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
+## Unreleased
+
+- The calls Homematic Manager makes, measured on rfd and hmipserver of firmware 3.89.11:
+  `getKeyMismatchDevice` with the scenario call `scriptKeyMismatch` (a device that holds another
+  system's key: heard at the next install mode, paired once `setTempKey` offers its key) and rfd's
+  `addDevice(serial)`; `suppressServiceMessages` and `getSuppressedServiceMessages` on hmipserver
+  (a suppressed message is left out of `getServiceMessages` and reports the value that raises
+  none); `getMetadata`, `setMetadata` and rfd's `getAllMetadata`, seeded with the new `metadata`
+  option; `listReplaceableDevices`; `getVersion` (`interfaces.<iface>.version`); `getLGWStatus`
+  (only with `interfaces.<iface>.lgwStatus` - rfd 3.89.11 does not know it); `setInterfaceClock`
+  (recorded in `sim.interfaceClocks`).
+- `interfaces.<iface>.getServiceMessagesFault: true` answers `getServiceMessages` with
+  `Invalid XML-RPC message`, as VirtualDevices, CUxD and hmipserver were seen to on 3.89.x.
+
 ## 1.2.0
 
 - The README is rewritten for the test author (quick start, connecting a client, the scenario API

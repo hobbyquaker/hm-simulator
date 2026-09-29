@@ -118,15 +118,17 @@ that starts with the bytes `Bin` is BIN-RPC, anything else XML-RPC over HTTP.
 
 **Incoming RPC methods.**
 
-|             |                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| session     | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`                                |
-| devices     | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `setInstallMode`, `getInstallMode`                                            |
-| paramsets   | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                              |
-| links       | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                                             |
-| interface   | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only), `changeKey` (rfd, hmipserver), `logLevel` |
-| teams       | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                                          |
-| maintenance | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware`, `refreshDeployedDeviceFirmwareList` (rfd, hmipserver)               |
+|                  |                                                                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| session          | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`                                                                                                                            |
+| devices          | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `listReplaceableDevices`, `setInstallMode`, `getInstallMode`, `addDevice` (BidCos only), `getKeyMismatchDevice` (rfd, hmipserver)                                         |
+| paramsets        | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                                                                                                                          |
+| links            | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                                                                                                                                         |
+| interface        | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only), `changeKey` (rfd, hmipserver), `logLevel`, `getVersion`, `setInterfaceClock` (rfd, hmipserver), `getLGWStatus` (only when configured) |
+| metadata         | `getMetadata`, `setMetadata` (rfd, hs485d, hmipserver), `getAllMetadata` (BidCos only)                                                                                                                                                            |
+| service messages | `suppressServiceMessages`, `getSuppressedServiceMessages` (hmipserver only)                                                                                                                                                                       |
+| teams            | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                                                                                                                                      |
+| maintenance      | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware`, `refreshDeployedDeviceFirmwareList` (rfd, hmipserver)                                                                                                           |
 
 Every write is checked against the paramset description (type, range, `VALUE_LIST`,
 `OPERATIONS`) and answered the way the interface process answers it - see
@@ -179,30 +181,31 @@ UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
 
 `new HmSim(options)`; everything is optional.
 
-| option                     | default                                              |                                                                                              |
-| -------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `devices`                  | `{rfd: {devices: []}, hmip: {devices: []}}`          | device descriptions per interface, `{<iface>: {devices: [...]}}`                             |
-| `paramsetDescriptions`     | the bundled 8.4 MB `data/paramset-descriptions.json` | replaces the bundled descriptions, see [Device data and fixtures](#device-data-and-fixtures) |
-| `paramsetFallback`         | `true`                                               | a firmware without a description uses the nearest one; `false` for exact keys only           |
-| `links`                    | `{}`                                                 | links per interface, `[{SENDER, RECEIVER, FLAGS, NAME, DESCRIPTION}]`                        |
-| `bidcosInterfaces`         | one per interface                                    | what `listBidcosInterfaces` answers, per interface                                           |
-| `serviceMessages`          | `{}`                                                 | extra service messages per interface, `[[address, datapoint, value]]`                        |
-| `newDevices`               | `{}`                                                 | devices that appear when the install mode is switched on, `{<iface>: {devices, delay}}`      |
-| `defaultRssi`              | `-65`                                                | what `rssiInfo` answers where a device has no RSSI datapoint                                 |
-| `config.listenAddress`     | all interfaces                                       | `'127.0.0.1'` in tests                                                                       |
-| `config.binrpcListenPort`  | –                                                    | rfd                                                                                          |
-| `config.xmlrpcListenPort`  | –                                                    | hmipserver                                                                                   |
-| `config.wiredListenPort`   | –                                                    | BidCos-Wired, started when `devices.wired` exists                                            |
-| `config.virtualListenPort` | off                                                  | VirtualDevices                                                                               |
-| `config.virtualPath`       | `/groups`                                            | the path VirtualDevices answers on                                                           |
-| `config.cuxdListenPort`    | off                                                  | CUxD                                                                                         |
-| `interfaces`               | see below                                            | behaviour per interface, `{<iface>: {...}}`                                                  |
-| `faults`                   | hmipserver's table                                   | overrides for the fault table, see [Fault codes](#fault-codes)                               |
-| `behaviorPath`             | `behaviors/` of the package                          | directory with [behaviour scripts](#behaviour-scripts), `false` for none                     |
-| `rega`                     | off                                                  | the [ReGa mock](#rega-mock)                                                                  |
-| `tls`                      | off                                                  | `true` or `{key, cert}`, see [TLS and basic auth](#tls-and-basic-auth)                       |
-| `auth`                     | off                                                  | `{username, password}`, HTTP basic auth                                                      |
-| `log`                      | silent                                               | an object with `debug`, `info`, `warn`, `error` (`console` will do)                          |
+| option                     | default                                              |                                                                                               |
+| -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `devices`                  | `{rfd: {devices: []}, hmip: {devices: []}}`          | device descriptions per interface, `{<iface>: {devices: [...]}}`                              |
+| `paramsetDescriptions`     | the bundled 8.4 MB `data/paramset-descriptions.json` | replaces the bundled descriptions, see [Device data and fixtures](#device-data-and-fixtures)  |
+| `paramsetFallback`         | `true`                                               | a firmware without a description uses the nearest one; `false` for exact keys only            |
+| `links`                    | `{}`                                                 | links per interface, `[{SENDER, RECEIVER, FLAGS, NAME, DESCRIPTION}]`                         |
+| `bidcosInterfaces`         | one per interface                                    | what `listBidcosInterfaces` answers, per interface                                            |
+| `serviceMessages`          | `{}`                                                 | extra service messages per interface, `[[address, datapoint, value]]`                         |
+| `newDevices`               | `{}`                                                 | devices that appear when the install mode is switched on, `{<iface>: {devices, delay}}`       |
+| `defaultRssi`              | `-65`                                                | what `rssiInfo` answers where a device has no RSSI datapoint                                  |
+| `metadata`                 | `{}`                                                 | what `getMetadata` answers before any `setMetadata`, `{<iface>: {<address>: {<key>: value}}}` |
+| `config.listenAddress`     | all interfaces                                       | `'127.0.0.1'` in tests                                                                        |
+| `config.binrpcListenPort`  | –                                                    | rfd                                                                                           |
+| `config.xmlrpcListenPort`  | –                                                    | hmipserver                                                                                    |
+| `config.wiredListenPort`   | –                                                    | BidCos-Wired, started when `devices.wired` exists                                             |
+| `config.virtualListenPort` | off                                                  | VirtualDevices                                                                                |
+| `config.virtualPath`       | `/groups`                                            | the path VirtualDevices answers on                                                            |
+| `config.cuxdListenPort`    | off                                                  | CUxD                                                                                          |
+| `interfaces`               | see below                                            | behaviour per interface, `{<iface>: {...}}`                                                   |
+| `faults`                   | hmipserver's table                                   | overrides for the fault table, see [Fault codes](#fault-codes)                                |
+| `behaviorPath`             | `behaviors/` of the package                          | directory with [behaviour scripts](#behaviour-scripts), `false` for none                      |
+| `rega`                     | off                                                  | the [ReGa mock](#rega-mock)                                                                   |
+| `tls`                      | off                                                  | `true` or `{key, cert}`, see [TLS and basic auth](#tls-and-basic-auth)                        |
+| `auth`                     | off                                                  | `{username, password}`, HTTP basic auth                                                       |
+| `log`                      | silent                                               | an object with `debug`, `info`, `warn`, `error` (`console` will do)                           |
 
 **Per interface** (`interfaces: {hmip: {...}, rfd: {...}}`):
 
@@ -220,6 +223,9 @@ UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
 | `startDelay`                   | `0`                                                                            | milliseconds after `whenReady()` until the port accepts connections: a process that starts late (`sim.ports` knows the port from the start)                                                                   |
 | `unreachWrites`                | `'accept'`                                                                     | what `setValue`/`putParamset` to an unreachable device answer: `'accept'`, or `'fault'` (`notReachable`). The simulator's model, not a measurement                                                            |
 | `firmwareUpdateDelay`          | `0`                                                                            | milliseconds per step of a firmware update                                                                                                                                                                    |
+| `getServiceMessagesFault`      | `false`                                                                        | answer `getServiceMessages` with the unknown-method fault (`Invalid XML-RPC message`), as VirtualDevices, CUxD and hmipserver were seen to on 3.89.x                                                          |
+| `version`                      | `'2.6.0'` for `rfd` and `wired`, `'3.89.11.20260919'` for `hmip`               | what `getVersion` answers; the rest has no `getVersion`                                                                                                                                                       |
+| `lgwStatus`                    | –                                                                              | BidCos only: what `getLGWStatus` answers; without it the method is unknown, as on rfd 3.89.11                                                                                                                 |
 
 ## Scenario API
 
@@ -233,6 +239,9 @@ sim.addDevice('rfd', device, channel0, channel1); // pairs a device: newDevices 
 sim.removeDevice('rfd', 'LAB0000002'); // deleteDevices, with its values and links
 sim.scriptNewDevices('rfd', [device, channel0, channel1], 500); // appear 500 ms after setInstallMode
 sim.getDevice('rfd', 'LAB0000002:1'); // the description, false when unknown
+// a device that holds another system's key: the next install mode hears it (getKeyMismatchDevice
+// names it) until setTempKey('their-key') lets it pair; addDevice('LAB0000009') does the same
+sim.scriptKeyMismatch('rfd', 'LAB0000009', {key: 'their-key', devices: [device, channel0, channel1]});
 ```
 
 **Values and events**
@@ -285,6 +294,8 @@ sim.getTempKey('rfd'); // what setTempKey set
 sim.getInstallMode('rfd'); // seconds of install mode left
 sim.keyChanges; // every changeKey: [{iface, key, ts}]
 sim.firmwareListRefreshes; // every refreshDeployedDeviceFirmwareList: [{iface, ts}]
+sim.interfaceClocks; // every setInterfaceClock: [{iface, utc, offset, ts}]
+sim.metadata; // what setMetadata stored: {<iface>: {<address>: {<key>: value}}}
 sim.ports; // {rfd, hmip, wired, virtual, cuxd, ...}: the ports once whenReady() resolved
 sim.regaSim.scripts; // every script the ReGa mock received
 ```
@@ -543,6 +554,20 @@ nothing is pending (measured); `serviceMessagesEmptyAsString: true` does the sam
 because it breaks every client that assumes an array, which is why a client should be tested with it
 once. Teams (`listTeams`) have the shape rfd was read to have on a CCU3.
 
+**Suppression** (hmipserver only, eQ-3's HmIP addendum): `suppressServiceMessages(channelAddress,
+parameter, suppress)` takes one of the channel's service parameters or `''` for all of them, and
+ignores a parameter without the service flag; `getSuppressedServiceMessages(channelAddress)`
+answers the suppressed ones (`[]` for an address it does not know). Measured on 3.89.11. A
+suppressed message is left out of `getServiceMessages` and its datapoint reports the value that
+raises no message (`false`), in `getValue`, `getParamset` and events, while the stored value stays;
+a new occurrence stays suppressed until the suppression is lifted. That a change of the suppression
+sends that value as an event is the simulator's model.
+
+VirtualDevices, CUxD and hmipserver were seen to answer `getServiceMessages` with the fault
+`Invalid XML-RPC message` on 3.89.x (hmipserver answered it on 3.89.11);
+`interfaces.<iface>.getServiceMessagesFault: true` does the same, for a client that has to survive
+it.
+
 ### A callback server that hangs
 
 `interfaces.<iface>.listenerModel: 'measured'`. Measured on firmware 3.89.8 (2026-09-25) with a
@@ -562,6 +587,28 @@ measurement; so is everything with the default `'isolated'`, where every client 
 `changeKey` (rfd, hmipserver; recorded in `sim.keyChanges`) and `refreshDeployedDeviceFirmwareList`
 (rfd, hmipserver; recorded in `sim.firmwareListRefreshes`) answer as the interfaces were measured to
 on firmware 3.89.x; the simulator does no cryptography and loads no firmware.
+
+### The calls of Homematic Manager
+
+Measured on rfd and hmipserver of firmware 3.89.11 (read-only calls, and one suppression set and
+lifted again):
+
+| call                                     | rfd                                                                    | hmipserver                                |
+| ---------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| `getKeyMismatchDevice(reset)`            | `''` when no device holds another key                                  | the same                                  |
+| `getMetadata(address, key)`, key not set | fault `-1 Failure`, for an unknown address too                         | an empty value                            |
+| `getAllMetadata(address)`, nothing set   | fault `-1 Failure`                                                     | not in `system.listMethods`               |
+| `listReplaceableDevices(address)`        | `[]` for its own `BidCoS-RF`, `-2 Unknown instance` for an unknown one | an empty HTTP body, always                |
+| `getVersion()`                           | `2.6.0`                                                                | the firmware, `3.89.11.…`                 |
+| `getLGWStatus()`                         | `unknown method name`, with and without a LAN gateway in the system    | not in `system.listMethods`               |
+| `suppressServiceMessages(…)`             | not in `system.listMethods`                                            | see [Service messages](#service-messages) |
+
+The simulator answers so, with the fault table in force (`-1 Generic error` under hmipserver's
+default table where rfd says `-1 Failure`) and `''` for hmipserver's empty body. Its models:
+`listReplaceableDevices` on rfd lists the other devices of the same `TYPE`; `setMetadata` on rfd
+knows only its own addresses; `setInterfaceClock` is recorded, not measured (it sets the clock the
+devices get). `addDevice(serial)` pairs only the device of `scriptKeyMismatch`, with the right
+temporary key; any other serial is `unknownInstance`, the mismatch a `notSupported` fault.
 
 ## ReGa mock
 
@@ -674,7 +721,7 @@ there. The flags win over the file:
 arguments. The answer is `{"result": ...}`; a fault is `400` with `faultCode` and `faultString`, an
 unknown call `404`. `GET /ports` answers the ports. The calls: `addDevice`, `removeDevice`,
 `fireEvent`, `fireEvents`, `setValue` (the device reporting a value, as a behaviour script does),
-`setServiceMessage`, `scriptNewDevices`, `dropConnection`, `stopInterface`, `startInterface`,
+`setServiceMessage`, `scriptNewDevices`, `scriptKeyMismatch`, `dropConnection`, `stopInterface`, `startInterface`,
 `restartInterface`, `injectFault`, `clearFaults`, `setReachable`, `setLowBattery`, `setDutyCycle`,
 `setCarrierSense`, `offerFirmware`, `schedule`, `getDevice`, `getWriteLog`, `getConfigPending`,
 `getPoisonedChannels`, `getMissingParamsetDescriptions`, `getCallbackLog`, `getTempKey`,
