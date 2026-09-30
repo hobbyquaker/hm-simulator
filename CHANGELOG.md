@@ -10,6 +10,13 @@ GitHub release notes.
   3.89.11 does although such a link works; filtered by an address the link carries its stored flags,
   0, as rfd answers there too. A test that shows a client how it handles rfd's flag can now make the
   link with `addLink` instead of seeding it (B-3, found through Homematic Manager's links list).
+- `replaceDevice` answers `true`, as the specification's `bool` says, where it answered `''` (a
+  client that takes the answer as the success saw a replacement that did happen as failed).
+- rfd's `listReplaceableDevices` names only the devices of the same type that are unreachable
+  (`setReachable(iface, address, false)`); a device that still answers is not replaced.
+- The declarations gain `clients` (the registered logic layers per interface, read-only, `Client`),
+  `dispatch` with its `DispatchContext` (the servers' entry, which a test may wrap to record calls),
+  and `replaceDevice`'s `true` (B-2, found through Homematic Manager's tests on 1.3.0).
 
 ## 1.3.0
 

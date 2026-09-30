@@ -621,7 +621,8 @@ lifted again):
 
 The simulator answers so, with the fault table in force (`-1 Generic error` under hmipserver's
 default table where rfd says `-1 Failure`) and `''` for hmipserver's empty body. Its models:
-`listReplaceableDevices` on rfd lists the other devices of the same `TYPE`; `setMetadata` on rfd
+`listReplaceableDevices` on rfd lists the other devices of the same `TYPE` that are unreachable
+(`setReachable(iface, address, false)`; a device that still answers is not replaced); `setMetadata` on rfd
 knows only its own addresses; `setInterfaceClock` is recorded, not measured (it sets the clock the
 devices get). `addDevice(serial)` pairs only the device of `scriptKeyMismatch`, with the right
 temporary key; any other serial is `unknownInstance`, the mismatch a `notSupported` fault.

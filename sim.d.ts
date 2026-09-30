@@ -257,6 +257,31 @@ declare namespace HmSim {
     /** `method -> handler(iface, params)`, as the servers dispatch it. */
     type RpcMethodTable = Record<string, (iface: string, params: unknown[]) => unknown>;
 
+    /** A logic layer registered with `init`: what the simulator calls back. */
+    interface Client {
+        /** the interface id the client gave `init` */
+        id: string;
+        /** its callback url, as given */
+        url: string;
+        /** the key in `clients[iface]` (the url, exactly) */
+        key: string;
+        /** the underlying binrpc or xmlrpc client */
+        client: unknown;
+        /** one callback to the client; logged in `getCallbackLog()` */
+        methodCall(
+            method: string,
+            params: unknown[],
+            callback: (error: Error | null | undefined, result?: unknown) => void,
+            options?: {timeout?: number},
+        ): void;
+    }
+
+    /** What the servers hand `dispatch` besides the call. */
+    interface DispatchContext {
+        /** the connection the call came in on, for an injected `closeSocket` */
+        socket?: {destroy(): void};
+    }
+
     /** The ports once `whenReady()` resolved. */
     type Ports = Partial<Record<InterfaceName, number>>;
 
@@ -305,6 +330,8 @@ declare class HmSim {
     /** stored state per interface and address: `{VALUES, MASTER, LINKS, ...}` */
     values: Record<string, Record<string, Record<string, Record<string, unknown>>>>;
     links: Record<string, HmSim.Link[]>;
+    /** the registered logic layers per interface, by callback url: the subscriptions `init(url, '')` removes */
+    readonly clients: Record<string, Record<string, HmSim.Client>>;
     serviceMessages: Record<string, HmSim.ServiceMessage[]>;
     /** every reportValueUsage */
     valueUsage: Array<{iface: string; address: string; valueId: string; refCounter: number; ts: number}>;
@@ -421,10 +448,21 @@ declare class HmSim {
 
     /** One RPC method as a client call would run it; throws the fault. */
     callMethod(iface: string, method: string, params?: unknown[]): unknown;
+    /**
+     * The servers' entry for every incoming call: injected faults and the lifecycle gates apply, then
+     * `callMethod`, and `callback(fault)` or `callback(null, result)`. A test wraps it to record calls.
+     */
+    dispatch(
+        iface: string,
+        method: string,
+        params: unknown[],
+        callback: (fault: HmSim.RpcFault | null | undefined, result?: unknown) => void,
+        context?: HmSim.DispatchContext,
+    ): void;
     getLinks(iface: string, params?: unknown[]): Array<HmSim.Link & Record<string, unknown>>;
     getLinkPeers(iface: string, params: unknown[]): string[];
     deleteDevice(iface: string, address: string, flags?: number): '';
-    replaceDevice(iface: string, oldAddress: string, newAddress: string): '';
+    replaceDevice(iface: string, oldAddress: string, newAddress: string): true;
     getKeyMismatchDevice(iface: string, params?: [reset?: boolean]): string;
     suppressServiceMessages(
         iface: string,

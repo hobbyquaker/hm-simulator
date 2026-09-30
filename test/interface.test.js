@@ -144,7 +144,7 @@ describe('interface and service methods', () => {
         ]);
 
         await rfd('putParamset', [`${DEVICE}:1`, 'MASTER', {STATUSINFO_MINDELAY: 9}]);
-        assert.equal(await rfd('replaceDevice', [DEVICE, 'REP0000001']), '');
+        assert.equal(await rfd('replaceDevice', [DEVICE, 'REP0000001']), true);
         assert.equal((await rfd('getParamset', ['REP0000001:1', 'MASTER'])).STATUSINFO_MINDELAY, 9);
         assert.equal((await rfd('getDeviceDescription', [DEVICE])).faultCode, -2);
     });

@@ -261,14 +261,19 @@ describe('the calls homematic-manager makes (task 15)', () => {
     });
 
     describe('listReplaceableDevices, getVersion, getLGWStatus, setInterfaceClock', () => {
-        it('lists the other devices of the same type on rfd, and answers empty on hmipserver', async () => {
+        it('lists the unreachable devices of the same type on rfd, and answers empty on hmipserver', async () => {
             const serial = 'REP0000001';
             sim.addDevice('rfd', ...switchDescriptions(serial));
+            // a device that still answers is not replaced
+            assert.deepEqual(await rfd('listReplaceableDevices', [SWITCH]), []);
+            sim.setReachable('rfd', serial, false);
             const replaceable = await rfd('listReplaceableDevices', [SWITCH]);
             assert.deepEqual(
                 replaceable.map((device) => device.ADDRESS),
                 [serial],
             );
+            sim.setReachable('rfd', serial, true);
+            assert.deepEqual(await rfd('listReplaceableDevices', [SWITCH]), []);
             assert.deepEqual(await rfd('listReplaceableDevices', ['ABC0000002']), []);
             assert.equal(await faultCode(rfd('listReplaceableDevices', ['UNKNOWN'])), -2);
             assert.equal(await hmip('listReplaceableDevices', [HMIP]), '');

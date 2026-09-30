@@ -93,6 +93,13 @@ async function scenario(): Promise<void> {
     sim.suppressServiceMessages('hmip', ['X:0', '', true]);
     const links = sim.getLinks('rfd', ['ABC0000001:1', 0]);
     const sender: string = links[0].SENDER;
+    const replaced: true = sim.replaceDevice('rfd', 'ABC0000001', 'ABC0000002');
+    const subscribers: number = Object.keys(sim.clients.rfd ?? {}).length;
+    const client: HmSim.Client | undefined = sim.clients.rfd?.['http://127.0.0.1:2010'];
+    client?.methodCall('system.listMethods', [client.id], (error, result) => void [error, result], {timeout: 100});
+    const inner = sim.dispatch.bind(sim);
+    sim.dispatch = (iface, method, params, callback, context) => inner(iface, method, params, callback, context);
+    sim.dispatch('rfd', 'getVersion', [], (fault, result) => void [fault?.faultCode, result]);
     const interfaces: HmSim.BidcosInterface[] = sim.listBidcosInterfaces('rfd');
     const rpc: unknown = sim.callMethod('rfd', 'getVersion', []);
     sim.rpcMethods.getVersion = () => '9.9.9';
@@ -110,10 +117,12 @@ async function scenario(): Promise<void> {
     await sim.schedule([{at: 1}]);
     // @ts-expect-error getWriteLog entries have no such field
     sim.getWriteLog()[0].nope;
+    // @ts-expect-error clients is read-only
+    sim.clients = {};
 
     void [port, added, found, count, value, paramset, read, messages, results, log, pending, poisoned, missing];
     void [answered, tempKey, seconds, names, keyChange, clock, refreshed, mode, mismatch, suppressed, sender];
-    void [interfaces, rpc, renames, scripts, fault, code, incomplete];
+    void [interfaces, rpc, renames, scripts, fault, code, incomplete, replaced, subscribers];
 }
 
 const table: faults.FaultTable = faults.DEFAULT_FAULTS;
