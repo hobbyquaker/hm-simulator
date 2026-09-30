@@ -487,6 +487,18 @@ Where the simulator imitates an interface process, this says whether the shape w
 CCU or is the simulator's model. The measurements were made for Homematic Manager (tasks 6 and 58)
 on CCUs with firmware 3.89.8 and 3.89.x.
 
+### Direct links
+
+rfd (firmware 3.89.11, 2026-09-30) answers `getLinks("", flags)` - the list of all links - with
+`FLAGS: 1` (`SENDER_BROKEN`) on every **device-internal** link: a relay's own button on the relay
+(`:1` → `:1`), a dimmer's channel on its virtual channels. The link works; the bit carries no
+information there. Asked for one address, `getLinks("ABC0000001:1", 0)` and `getLinks("ABC0000001",
+0)` answer the same link with `FLAGS: 0`, and `getLinkPeers` names the own channel once. The simulator
+does the same on `rfd`: `addLink` stores `FLAGS: 0`, the unfiltered list adds bit 1 to internal links
+(seeded flags are kept and or-ed), the filtered one reports what is stored. hmipserver is not
+measured and reports the stored flags. rfd also refuses `getLinkPeers` of a device address (`-1
+Failure`); the simulator answers the peers of all its channels.
+
 ### CONFIG_PENDING
 
 What a `putParamset MASTER` does, per interface (`interfaces.<iface>.configPendingMode`):

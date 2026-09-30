@@ -3,7 +3,7 @@
 const {describe, it, before, after} = require('node:test');
 const assert = require('node:assert/strict');
 
-const {startSim, binrpcCall, fixtures} = require('./helpers.js');
+const {startSim, binrpcCall, xmlrpcCall, fixtures} = require('./helpers.js');
 
 const KEY = 'ABC0000002:1';
 const SWITCH = `${fixtures.SWITCH_ADDRESS}:1`;
@@ -112,5 +112,70 @@ describe('links', () => {
         assert.equal(await rfd('removeLink', [KEY, SWITCH]), '');
         assert.deepEqual(await rfd('getLinks', []), []);
         assert.equal((await rfd('getParamset', [SWITCH, KEY])).faultCode, -2);
+    });
+});
+
+describe('device-internal links', () => {
+    const OTHER = 'ABC0000002:1';
+    const HMIP = `${fixtures.HMIP_ADDRESS}:1`;
+    let sim;
+    let rfd;
+    let hmip;
+
+    before(async () => {
+        const started = await startSim({
+            links: {
+                rfd: [
+                    {SENDER: OTHER, RECEIVER: SWITCH},
+                    {SENDER: `${fixtures.SWITCH_ADDRESS}:0`, RECEIVER: SWITCH, FLAGS: 2},
+                ],
+                hmip: [{SENDER: HMIP, RECEIVER: HMIP}],
+            },
+        });
+        sim = started.sim;
+        rfd = binrpcCall(started.binrpcPort);
+        hmip = xmlrpcCall(started.xmlrpcPort);
+    });
+
+    after(() => {
+        rfd.close();
+        sim.close();
+    });
+
+    const byPair = (links, sender, receiver) =>
+        links.find((link) => link.SENDER === sender && link.RECEIVER === receiver);
+
+    it('reports FLAGS 1 for a link within one device in the list of all links, as rfd does', async () => {
+        // a relay's own button on the relay: the link works, rfd still says SENDER_BROKEN
+        assert.equal(await rfd('addLink', [SWITCH, SWITCH, 'own button', '']), '');
+        const all = await rfd('getLinks', []);
+        assert.equal(byPair(all, SWITCH, SWITCH).FLAGS, 1);
+        assert.equal(byPair(all, OTHER, SWITCH).FLAGS, 0);
+        // whatever the flags argument asks for
+        assert.equal(byPair(await rfd('getLinks', ['', 1]), SWITCH, SWITCH).FLAGS, 1);
+        assert.equal(byPair(await rfd('getLinks', ['', 6]), SWITCH, SWITCH).FLAGS, 1);
+    });
+
+    it('reports the stored flags once an address filters the list, as rfd does', async () => {
+        assert.equal(byPair(await rfd('getLinks', [SWITCH, 0]), SWITCH, SWITCH).FLAGS, 0);
+        assert.equal(byPair(await rfd('getLinks', [fixtures.SWITCH_ADDRESS, 0]), SWITCH, SWITCH).FLAGS, 0);
+    });
+
+    it('keeps seeded flags and adds bit 1 to a seeded internal link', async () => {
+        const all = await rfd('getLinks', []);
+        // the :0 -> :1 link was seeded with RECEIVER_BROKEN; it is internal too
+        assert.equal(byPair(all, `${fixtures.SWITCH_ADDRESS}:0`, SWITCH).FLAGS, 3);
+        assert.equal(byPair(await rfd('getLinks', [SWITCH]), `${fixtures.SWITCH_ADDRESS}:0`, SWITCH).FLAGS, 2);
+    });
+
+    it('lists the own channel once as a peer, and knows the link info', async () => {
+        const peers = await rfd('getLinkPeers', [SWITCH]);
+        assert.deepEqual(peers.sort(), [OTHER, `${fixtures.SWITCH_ADDRESS}:0`, SWITCH].sort());
+        assert.deepEqual(await rfd('getLinkInfo', [SWITCH, SWITCH]), {NAME: 'own button', DESCRIPTION: ''});
+    });
+
+    it('leaves hmipserver links alone', async () => {
+        const all = await hmip('getLinks', []);
+        assert.equal(byPair(all, HMIP, HMIP).FLAGS, 0);
     });
 });

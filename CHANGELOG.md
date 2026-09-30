@@ -3,6 +3,14 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
+## Unreleased
+
+- `getLinks` without an address reports `FLAGS: 1` (`SENDER_BROKEN`) on every device-internal link of
+  `rfd` - a relay's own button on the relay, a dimmer's channel on its virtual channels - as rfd
+  3.89.11 does although such a link works; filtered by an address the link carries its stored flags,
+  0, as rfd answers there too. A test that shows a client how it handles rfd's flag can now make the
+  link with `addLink` instead of seeding it (B-3, found through Homematic Manager's links list).
+
 ## 1.3.0
 
 - The calls Homematic Manager makes, measured on rfd and hmipserver of firmware 3.89.11:
