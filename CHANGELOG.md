@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.3.1
 
 - `getLinks` without an address reports `FLAGS: 1` (`SENDER_BROKEN`) on every device-internal link of
   `rfd` - a relay's own button on the relay, a dimmer's channel on its virtual channels - as rfd
