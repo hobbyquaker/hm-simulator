@@ -11,6 +11,7 @@ export type FaultName =
     | 'unknownMethod'
     | 'unknownInstance'
     | 'unknownParamset'
+    | 'unknownParamsetDescription'
     | 'unknownParameter'
     | 'unknownLink'
     | 'readOnly'

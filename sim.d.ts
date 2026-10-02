@@ -405,6 +405,8 @@ declare class HmSim {
         paramset: string,
     ): HmSim.ParamsetDescription | undefined;
     getDeviceDescription(iface: string, address: string): HmSim.DeviceDescription;
+    /** the RPC `getParamsetDescription`: faults for an unknown address or a paramset the channel lacks */
+    describeParamset(iface: string, address: string, paramset: string): HmSim.ParamsetDescription | undefined;
 
     /* ---------------------------------------------------------------- scenario api: service messages and health */
 

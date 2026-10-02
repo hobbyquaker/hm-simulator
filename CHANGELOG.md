@@ -3,6 +3,15 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
+## Unreleased
+
+- `getParamsetDescription` of an address the interface does not know answers the `unknownInstance`
+  fault - `-2 Invalid device` under hmipserver's default table, `-2 Unknown instance` under rfd's -
+  as both interface processes do on 3.89.11; it answered `''`. A paramset the channel does not list
+  answers the new table entry `unknownParamsetDescription` (`-3 Unknown Paramset` / `-3 Unknown
+paramset`, measured); a paramset the channel has but the description set lacks still answers `''`
+  (B-5, found through node-red-contrib-ccu's handling of the fault on a real CCU).
+
 ## 1.3.1
 
 - `getLinks` without an address reports `FLAGS: 1` (`SENDER_BROKEN`) on every device-internal link of

@@ -535,20 +535,21 @@ The two models are the explanations that competed before the measurement (Homema
 The default table is **hmipserver's**, because that is the one an application has to survive
 (measured):
 
-| key                | code | string                          | when                                                                               |
-| ------------------ | ---- | ------------------------------- | ---------------------------------------------------------------------------------- |
-| `unknownMethod`    | -1   | Invalid XML-RPC message         | no handler for the method name (hmipserver answers this without a faultCode)       |
-| `unknownInstance`  | -2   | Invalid device                  | address not known to this interface                                                |
-| `unknownParamset`  | -2   | Invalid device                  | the device has no such paramset                                                    |
-| `unknownLink`      | -2   | Invalid device                  | the two channels are not linked                                                    |
-| `unknownParameter` | -5   | Unknown Parameter for value key | the paramset has no such parameter                                                 |
-| `readOnly`         | -5   | Invalid parameter or value      | `OPERATIONS & 2` is not set                                                        |
-| `typeError`        | -5   | Invalid parameter or value      | value does not fit the parameter's `TYPE`                                          |
-| `outOfRange`       | -5   | Invalid parameter or value      | ENUM value not in `VALUE_LIST`                                                     |
-| `invalidValue`     | -5   | Invalid parameter or value      | the stored channel configuration cannot be transferred                             |
-| `notSupported`     | -1   | Generic error                   | a method this interface does not implement                                         |
-| `notReachable`     | -1   | Generic error (UNREACH)         | a sleeping battery device                                                          |
-| `invalidArguments` | -321 | Invalid arguments               | wrong number of arguments; hmipserver really answers a Java exception message here |
+| key                          | code | string                          | when                                                                                                                    |
+| ---------------------------- | ---- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `unknownMethod`              | -1   | Invalid XML-RPC message         | no handler for the method name (hmipserver answers this without a faultCode)                                            |
+| `unknownInstance`            | -2   | Invalid device                  | address not known to this interface                                                                                     |
+| `unknownParamset`            | -2   | Invalid device                  | `getParamset`/`putParamset` of a paramset the device does not have                                                      |
+| `unknownParamsetDescription` | -3   | Unknown Paramset                | `getParamsetDescription` of a paramset the channel does not list (3.89.11 appends the name: `Unknown Paramset: NOSUCH`) |
+| `unknownLink`                | -2   | Invalid device                  | the two channels are not linked                                                                                         |
+| `unknownParameter`           | -5   | Unknown Parameter for value key | the paramset has no such parameter                                                                                      |
+| `readOnly`                   | -5   | Invalid parameter or value      | `OPERATIONS & 2` is not set                                                                                             |
+| `typeError`                  | -5   | Invalid parameter or value      | value does not fit the parameter's `TYPE`                                                                               |
+| `outOfRange`                 | -5   | Invalid parameter or value      | ENUM value not in `VALUE_LIST`                                                                                          |
+| `invalidValue`               | -5   | Invalid parameter or value      | the stored channel configuration cannot be transferred                                                                  |
+| `notSupported`               | -1   | Generic error                   | a method this interface does not implement                                                                              |
+| `notReachable`               | -1   | Generic error (UNREACH)         | a sleeping battery device                                                                                               |
+| `invalidArguments`           | -321 | Invalid arguments               | wrong number of arguments; hmipserver really answers a Java exception message here                                      |
 
 Over XML-RPC a fault is an XML-RPC fault, over BIN-RPC a message of type `0xff` with a
 `faultCode`/`faultString` struct. rfd's table is exported as `BIDCOS_FAULTS` and differs in more
@@ -560,6 +561,22 @@ const {FAULT_TABLES} = require('hm-simulator/lib/faults.js');
 new HmSim({faults: FAULT_TABLES.bidcos});
 new HmSim({faults: {unknownParameter: {faultCode: -4, faultString: 'Unknown parameter'}}}); // one entry
 ```
+
+### Unknown addresses and paramsets
+
+Measured 2026-10-02 on rfd and hmipserver of firmware 3.89.11, with a device address and a channel
+address alike: an address the interface does not know is a fault from every method that takes one -
+`getDeviceDescription`, `getParamsetDescription`, `getParamset`, `getLinks`, `getLinkPeers` - rfd's
+`-2 Unknown instance`, hmipserver's `-2 Invalid device`. The simulator answers `unknownInstance` of
+the table in force everywhere (until 1.3.1 `getParamsetDescription` answered `''` there).
+
+`getParamsetDescription` of a paramset the channel does not have: hmipserver answers `-3 Unknown
+Paramset: <name>`; rfd answers `-3 Unknown paramset` on a channel without a `LINK` paramset and the
+`LINK` description on a channel that has one (the name is taken as a peer address, as `getParamset`
+does). The simulator answers `unknownParamsetDescription` whenever the channel's `PARAMSETS` lacks
+the name. A paramset the channel lists but the description set has no entry for still answers `''`:
+that is a gap in the fixture (logged once, see
+[Device data and fixtures](#device-data-and-fixtures)), not something an interface process does.
 
 ### Service messages
 

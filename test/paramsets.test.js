@@ -98,6 +98,25 @@ describe('getParamset / putParamset / getValue', () => {
             assert.equal(result.faultCode, -2);
         });
 
+        it('getParamsetDescription of an unknown address', async () => {
+            // hmipserver answers -2 Invalid device, rfd -2 Unknown instance (3.89.11): the table's unknownInstance
+            for (const address of ['NOPE0000001', 'NOPE0000001:1']) {
+                const result = await rfd('getParamsetDescription', [address, 'MASTER']);
+                assert.equal(result.faultCode, -2, address);
+                assert.equal(result.faultString, 'Invalid device', address);
+            }
+        });
+
+        it('getParamsetDescription of a paramset the channel does not have', async () => {
+            // hmipserver: -3 Unknown Paramset: NOSUCHSET; rfd: -3 Unknown paramset on a channel without LINK
+            const result = await rfd('getParamsetDescription', [`${fixtures.SWITCH_ADDRESS}:0`, 'LINK']);
+            assert.equal(result.faultCode, -3);
+            assert.equal(result.faultString, 'Unknown Paramset');
+            assert.equal((await rfd('getParamsetDescription', [SWITCH, 'NOSUCHSET'])).faultCode, -3);
+            assert.equal((await rfd('getParamsetDescription', [SWITCH, ''])).faultCode, -321);
+            assert.ok((await rfd('getParamsetDescription', [SWITCH, 'LINK'])).SHORT_ON_TIME);
+        });
+
         it('unknown parameter', async () => {
             const result = await rfd('putParamset', [SWITCH, 'MASTER', {NOT_A_PARAMETER: 1}]);
             assert.equal(result.faultCode, -5);
@@ -170,5 +189,22 @@ describe('ENUM defaults', () => {
         assert.deepEqual(await rfd('getServiceMessages', []), []);
         rfd.close();
         sim.close();
+    });
+});
+
+describe("rfd's fault table", () => {
+    it('answers an unknown address and a device address as rfd 3.89.11 was measured to', async () => {
+        const {FAULT_TABLES} = require('../lib/faults.js');
+        const {sim, binrpcPort} = await startSim({faults: FAULT_TABLES.bidcos});
+        const rfd = binrpcCall(binrpcPort);
+        try {
+            const description = await rfd('getParamsetDescription', ['NOPE0000001:1', 'MASTER']);
+            assert.deepEqual(description, {faultCode: -2, faultString: 'Unknown instance'});
+            const paramset = await rfd('getParamsetDescription', [`${fixtures.SWITCH_ADDRESS}:0`, 'LINK']);
+            assert.deepEqual(paramset, {faultCode: -3, faultString: 'Unknown paramset'});
+        } finally {
+            rfd.close();
+            sim.close();
+        }
     });
 });
