@@ -129,7 +129,10 @@ describe('device-internal links', () => {
                     {SENDER: OTHER, RECEIVER: SWITCH},
                     {SENDER: `${fixtures.SWITCH_ADDRESS}:0`, RECEIVER: SWITCH, FLAGS: 2},
                 ],
-                hmip: [{SENDER: HMIP, RECEIVER: HMIP}],
+                hmip: [
+                    {SENDER: HMIP, RECEIVER: HMIP},
+                    {SENDER: `${fixtures.HMIP_ADDRESS}:0`, RECEIVER: HMIP},
+                ],
             },
         });
         sim = started.sim;
@@ -177,5 +180,26 @@ describe('device-internal links', () => {
     it('leaves hmipserver links alone', async () => {
         const all = await hmip('getLinks', []);
         assert.equal(byPair(all, HMIP, HMIP).FLAGS, 0);
+    });
+
+    it('refuses getLinkPeers of a device address on rfd, as rfd does', async () => {
+        // rfd 3.89.11: -1 Failure; -1 Generic error under hmipserver's default fault table
+        const result = await rfd('getLinkPeers', [fixtures.SWITCH_ADDRESS]);
+        assert.equal(result.faultCode, -1);
+        assert.equal(result.faultString, sim.faults.notSupported.faultString);
+        assert.deepEqual(await rfd('getLinkPeers', [`${fixtures.SWITCH_ADDRESS}:0`]), [SWITCH]);
+    });
+
+    it('answers getLinkPeers of a device address on hmipserver channel by channel, as hmipserver does', async () => {
+        const other = `${fixtures.HMIP_ADDRESS}:0`;
+        // :0 -> :1 and :1 -> :1: the channels' lists one after the other (:0's, then :1's), :1 twice
+        assert.deepEqual(await hmip('getLinkPeers', [fixtures.HMIP_ADDRESS]), [HMIP, HMIP, other]);
+        assert.deepEqual(await hmip('getLinkPeers', [HMIP]), [HMIP, other]);
+        assert.deepEqual(await hmip('getLinkPeers', [other]), [HMIP]);
+    });
+
+    it('faults getLinkPeers of an unknown address', async () => {
+        assert.equal((await rfd('getLinkPeers', ['NOPE0000001:1'])).faultCode, -2);
+        await assert.rejects(hmip('getLinkPeers', ['NOPE0000001']), {faultCode: -2, faultString: 'Invalid device'});
     });
 });

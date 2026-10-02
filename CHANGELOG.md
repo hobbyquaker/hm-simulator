@@ -11,6 +11,11 @@ GitHub release notes.
   answers the new table entry `unknownParamsetDescription` (`-3 Unknown Paramset` / `-3 Unknown
 paramset`, measured); a paramset the channel has but the description set lacks still answers `''`
   (B-5, found through node-red-contrib-ccu's handling of the fault on a real CCU).
+- `getLinkPeers` of a device address faults on `rfd` with the `notSupported` entry (`-1 Failure`
+  under rfd's table, as rfd 3.89.11 answers; `-1 Generic error` under the default one), where it
+  answered the peers of all channels; on hmipserver and the other interfaces it answers the channels'
+  lists one after the other, a peer linked with two of the channels twice, as hmipserver 3.89.11 does
+  (B-4).
 
 ## 1.3.1
 

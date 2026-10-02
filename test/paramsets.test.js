@@ -202,6 +202,8 @@ describe("rfd's fault table", () => {
             assert.deepEqual(description, {faultCode: -2, faultString: 'Unknown instance'});
             const paramset = await rfd('getParamsetDescription', [`${fixtures.SWITCH_ADDRESS}:0`, 'LINK']);
             assert.deepEqual(paramset, {faultCode: -3, faultString: 'Unknown paramset'});
+            const peers = await rfd('getLinkPeers', [fixtures.SWITCH_ADDRESS]);
+            assert.deepEqual(peers, {faultCode: -1, faultString: 'Failure'});
         } finally {
             rfd.close();
             sim.close();

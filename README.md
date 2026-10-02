@@ -496,8 +496,13 @@ information there. Asked for one address, `getLinks("ABC0000001:1", 0)` and `get
 0)` answer the same link with `FLAGS: 0`, and `getLinkPeers` names the own channel once. The simulator
 does the same on `rfd`: `addLink` stores `FLAGS: 0`, the unfiltered list adds bit 1 to internal links
 (seeded flags are kept and or-ed), the filtered one reports what is stored. hmipserver is not
-measured and reports the stored flags. rfd also refuses `getLinkPeers` of a device address (`-1
-Failure`); the simulator answers the peers of all its channels.
+measured and reports the stored flags.
+
+`getLinkPeers` of a **device** address (measured 2026-10-02, 3.89.11): rfd refuses it with `-1
+Failure`; hmipserver answers the channels' peer lists one after the other, so a peer linked with two
+of the channels is named twice. The simulator does the same: on `rfd` the `notSupported` entry of the
+fault table in force (`-1 Generic error` under hmipserver's default table, `-1 Failure` under
+`FAULT_TABLES.bidcos`), on every other interface the channels' lists in channel order.
 
 ### CONFIG_PENDING
 
