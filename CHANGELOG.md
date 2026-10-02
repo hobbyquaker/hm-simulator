@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.3.2
 
 - `getParamsetDescription` of an address the interface does not know answers the `unknownInstance`
   fault - `-2 Invalid device` under hmipserver's default table, `-2 Unknown instance` under rfd's -
