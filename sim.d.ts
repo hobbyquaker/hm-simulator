@@ -238,6 +238,31 @@ declare namespace HmSim {
         args?: unknown[];
     }
 
+    /** scriptInclusion(): an HmIP device in reach of the next install mode */
+    interface InclusionScript {
+        /** its device key as the QR code holds it (32 hex digits) */
+        key?: string;
+        /** its description and channel descriptions, paired when it joins */
+        devices?: DeviceDescription[];
+        /** milliseconds between the install mode and its request */
+        delay?: number;
+    }
+
+    /** One inclusion request of a scripted HmIP device. */
+    interface Inclusion {
+        sgtin: string;
+        /** joined; declined because the whitelist's LOCAL key is not its key; not on the whitelist */
+        result: 'paired' | 'declined' | 'ignored';
+        ts: number;
+    }
+
+    /** One entry of setInstallModeWithWhitelist's list, as the simulator keeps it. */
+    interface WhitelistEntry {
+        ADDRESS: string;
+        KEY_MODE: string;
+        KEY: string;
+    }
+
     interface KeyMismatchScript {
         /** the passphrase the device was taught in with */
         key?: string;
@@ -349,6 +374,12 @@ declare class HmSim {
     keyMismatch: Record<string, string>;
     /** what scriptKeyMismatch() set up and did not pair yet */
     keyMismatchScript: Record<string, Required<HmSim.KeyMismatchScript> & {serial: string}>;
+    /** the whitelist the install mode was last opened with (setInstallModeWithWhitelist), per interface */
+    installWhitelist: Record<string, HmSim.WhitelistEntry[]>;
+    /** the HmIP devices scriptInclusion() put in reach and that did not join yet, per interface and SGTIN */
+    inclusionScripts: Record<string, Map<string, Required<HmSim.InclusionScript> & {sgtin: string}>>;
+    /** every inclusion request of a scripted device, per interface */
+    inclusions: Record<string, HmSim.Inclusion[]>;
     /** the temporary key per interface, as setTempKey left it */
     tempKey: Record<string, string>;
     /** the log level per interface, as logLevel set it */
@@ -381,6 +412,12 @@ declare class HmSim {
     scriptNewDevices(iface: string, devices: HmSim.DeviceDescription[], delay?: number): void;
     /** A device that holds another system's key: heard at the next install mode, paired with its key. */
     scriptKeyMismatch(iface: string, serial: string, script?: HmSim.KeyMismatchScript): void;
+    /** An HmIP device in reach of the next install mode: joins, or is declined for a whitelist key that is not its own. */
+    scriptInclusion(iface: string, sgtin: string, script?: HmSim.InclusionScript): void;
+    /** Every inclusion request of a scripted device, oldest first. */
+    getInclusions(iface: string): HmSim.Inclusion[];
+    /** The whitelist of the open install mode, `[]` without one. */
+    getInstallWhitelist(iface: string): HmSim.WhitelistEntry[];
 
     /* ---------------------------------------------------------------- scenario api: values and events */
 

@@ -3,6 +3,16 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
+## Unreleased
+
+- `setInstallModeWithWhitelist(on, time, [{ADDRESS, KEY_MODE, KEY}])` on hmipserver, which answered
+  the unknown-method fault: it opens the install mode for the listed SGTINs (Homematic Manager's
+  pairing with the key from the sticker), `on: false` closes it. The scenario call `scriptInclusion`
+  puts an HmIP device in reach of the next install mode: it joins, or - with a whitelist `LOCAL` key
+  that is not its own - is declined, nothing joins and the device stays in reach; `getInclusions`
+  answers every request with its result (`paired`, `declined`, `ignored`), `getInstallWhitelist` the
+  open install mode's list. The simulator's model, not a measurement (Homematic Manager task 88).
+
 ## 1.3.2
 
 - `getParamsetDescription` of an address the interface does not know answers the `unknownInstance`

@@ -122,17 +122,17 @@ that starts with the bytes `Bin` is BIN-RPC, anything else XML-RPC over HTTP.
 
 **Incoming RPC methods.**
 
-|                  |                                                                                                                                                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| session          | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`                                                                                                                            |
-| devices          | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `listReplaceableDevices`, `setInstallMode`, `getInstallMode`, `addDevice` (BidCos only), `getKeyMismatchDevice` (rfd, hmipserver)                                         |
-| paramsets        | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                                                                                                                          |
-| links            | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                                                                                                                                         |
-| interface        | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only), `changeKey` (rfd, hmipserver), `logLevel`, `getVersion`, `setInterfaceClock` (rfd, hmipserver), `getLGWStatus` (only when configured) |
-| metadata         | `getMetadata`, `setMetadata` (rfd, hs485d, hmipserver), `getAllMetadata` (BidCos only)                                                                                                                                                            |
-| service messages | `suppressServiceMessages`, `getSuppressedServiceMessages` (hmipserver only)                                                                                                                                                                       |
-| teams            | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                                                                                                                                      |
-| maintenance      | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware`, `refreshDeployedDeviceFirmwareList` (rfd, hmipserver)                                                                                                           |
+|                  |                                                                                                                                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| session          | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`                                                                                                                                |
+| devices          | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `listReplaceableDevices`, `setInstallMode`, `setInstallModeWithWhitelist` (hmipserver), `getInstallMode`, `addDevice` (BidCos only), `getKeyMismatchDevice` (rfd, hmipserver) |
+| paramsets        | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                                                                                                                              |
+| links            | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                                                                                                                                             |
+| interface        | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only), `changeKey` (rfd, hmipserver), `logLevel`, `getVersion`, `setInterfaceClock` (rfd, hmipserver), `getLGWStatus` (only when configured)     |
+| metadata         | `getMetadata`, `setMetadata` (rfd, hs485d, hmipserver), `getAllMetadata` (BidCos only)                                                                                                                                                                |
+| service messages | `suppressServiceMessages`, `getSuppressedServiceMessages` (hmipserver only)                                                                                                                                                                           |
+| teams            | `listTeams`, `setTeam` (BidCos only): the smoke detector teams as rfd keeps them, pseudo devices `*<serial>`                                                                                                                                          |
+| maintenance      | `clearConfigCache`, `restoreConfigToDevice`, `updateFirmware`, `installFirmware`, `refreshDeployedDeviceFirmwareList` (rfd, hmipserver)                                                                                                               |
 
 Every write is checked against the paramset description (type, range, `VALUE_LIST`,
 `OPERATIONS`) and answered the way the interface process answers it - see
@@ -246,6 +246,14 @@ sim.getDevice('rfd', 'LAB0000002:1'); // the description, false when unknown
 // a device that holds another system's key: the next install mode hears it (getKeyMismatchDevice
 // names it) until setTempKey('their-key') lets it pair; addDevice('LAB0000009') does the same
 sim.scriptKeyMismatch('rfd', 'LAB0000009', {key: 'their-key', devices: [device, channel0, channel1]});
+// an HmIP device in factory state asks the next install mode to join; with a whitelist whose LOCAL
+// key is not its key it is declined, and stays in reach for the next one
+sim.scriptInclusion('hmip', '3014F711A000000000000088', {
+  key: '00112233445566778899AABBCCDDEEFF',
+  devices: [hmipDevice],
+});
+sim.getInclusions('hmip'); // [{sgtin, result: 'paired' | 'declined' | 'ignored', ts}]
+sim.getInstallWhitelist('hmip'); // the open install mode's [{ADDRESS, KEY_MODE, KEY}], [] without one
 ```
 
 **Values and events**
@@ -649,6 +657,17 @@ knows only its own addresses; `setInterfaceClock` is recorded, not measured (it 
 devices get). `addDevice(serial)` pairs only the device of `scriptKeyMismatch`, with the right
 temporary key; any other serial is `unknownInstance`, the mismatch a `notSupported` fault.
 
+`setInstallModeWithWhitelist(on, time, [{ADDRESS, KEY_MODE, KEY}])` (hmipserver only; the others
+answer the unknown-method fault) opens the install mode for the listed SGTINs, as Homematic Manager
+sends it for a device paired with the key from its sticker (`KEY_MODE: 'LOCAL'`, `KEY` the 32 hex
+digits of the QR code), and `on: false` closes it; a list that is not an array of structs with an
+`ADDRESS` is `invalidArguments`. Which devices it admits is the simulator's model, not a
+measurement: a device of `scriptInclusion` joins when it is on the list and the entry's `LOCAL` key
+is its own (or the entry names another key mode, the key server's), is **declined** when the `LOCAL`
+key is another - nothing joins, no RPC client is told, `getInclusions` records it, the device stays
+in reach - and is not admitted (`ignored`) when it is not on the list. Opened with `setInstallMode`,
+the device joins.
+
 ## ReGa mock
 
 `rega: {port: 8181, ...}` starts an HTTP server that answers `POST /<name>.exe` as the CCU's
@@ -760,7 +779,8 @@ there. The flags win over the file:
 arguments. The answer is `{"result": ...}`; a fault is `400` with `faultCode` and `faultString`, an
 unknown call `404`. `GET /ports` answers the ports. The calls: `addDevice`, `removeDevice`,
 `fireEvent`, `fireEvents`, `setValue` (the device reporting a value, as a behaviour script does),
-`setServiceMessage`, `scriptNewDevices`, `scriptKeyMismatch`, `dropConnection`, `stopInterface`, `startInterface`,
+`setServiceMessage`, `scriptNewDevices`, `scriptKeyMismatch`, `scriptInclusion`, `getInclusions`,
+`getInstallWhitelist`, `dropConnection`, `stopInterface`, `startInterface`,
 `restartInterface`, `injectFault`, `clearFaults`, `setReachable`, `setLowBattery`, `setDutyCycle`,
 `setCarrierSense`, `offerFirmware`, `schedule`, `getDevice`, `getWriteLog`, `getConfigPending`,
 `getPoisonedChannels`, `getMissingParamsetDescriptions`, `getCallbackLog`, `getTempKey`,

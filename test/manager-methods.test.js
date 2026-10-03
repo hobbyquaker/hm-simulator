@@ -167,6 +167,102 @@ describe('the calls homematic-manager makes (task 15)', () => {
         });
     });
 
+    describe('setInstallModeWithWhitelist and scriptInclusion (Homematic Manager task 88)', () => {
+        const SGTIN = '3014F711A000000000000088';
+        const KEY = '00112233445566778899AABBCCDDEEFF';
+
+        /** The fixture's HmIP device with its channels under another address. */
+        function hmipDescriptions(address) {
+            return fixtures
+                .devices()
+                .hmip.devices.filter((device) => device.ADDRESS === HMIP || device.PARENT === HMIP)
+                .map((device) => {
+                    const copy = structuredClone(device);
+                    copy.ADDRESS = copy.ADDRESS.replace(HMIP, address);
+                    if (copy.PARENT) {
+                        copy.PARENT = address;
+                    }
+                    if (copy.CHILDREN) {
+                        copy.CHILDREN = copy.CHILDREN.map((child) => child.replace(HMIP, address));
+                    }
+                    return copy;
+                });
+        }
+
+        const whitelist = (key) => [{ADDRESS: '3014-F711-A000-0000-0000-0088', KEY_MODE: 'LOCAL', KEY: key}];
+
+        it('opens and closes the install mode on hmipserver only, and refuses a list that is none', async () => {
+            assert.equal(await hmip('setInstallModeWithWhitelist', [true, 30, whitelist(KEY)]), '');
+            assert.ok(sim.getInstallMode('hmip') > 25);
+            assert.deepEqual(sim.getInstallWhitelist('hmip'), [{ADDRESS: SGTIN, KEY_MODE: 'LOCAL', KEY}]);
+            assert.equal(await hmip('getInstallMode', []), sim.getInstallMode('hmip'));
+            assert.equal(await hmip('setInstallModeWithWhitelist', [false]), '');
+            assert.equal(sim.getInstallMode('hmip'), 0);
+            assert.deepEqual(sim.getInstallWhitelist('hmip'), []);
+
+            assert.equal(await faultCode(hmip('setInstallModeWithWhitelist', [true, 30, 'nope'])), -321);
+            assert.equal(await faultCode(hmip('setInstallModeWithWhitelist', [true, 30, [{KEY: KEY}]])), -321);
+            assert.equal(await faultCode(rfd('setInstallModeWithWhitelist', [true, 30, whitelist(KEY)])), -1);
+
+            // a plain install mode forgets the list
+            await hmip('setInstallModeWithWhitelist', [true, 30, whitelist(KEY)]);
+            await hmip('setInstallMode', [true, 30]);
+            assert.deepEqual(sim.getInstallWhitelist('hmip'), []);
+            await hmip('setInstallMode', [false]);
+        });
+
+        it('declines a device whose whitelist key is not its own, then pairs it with the right one', async () => {
+            const address = '0001D3C99C0088';
+            sim.scriptInclusion('hmip', SGTIN, {key: KEY.toLowerCase(), devices: hmipDescriptions(address)});
+
+            await hmip('setInstallModeWithWhitelist', [true, 60, whitelist('FF112233445566778899AABBCCDDEEFF')]);
+            await waitFor(() => sim.getInclusions('hmip').length === 1, {what: 'the declined request'});
+            assert.equal(sim.getInclusions('hmip')[0].result, 'declined');
+            assert.equal(sim.getInclusions('hmip')[0].sgtin, SGTIN);
+            assert.equal(sim.getDevice('hmip', address), false);
+            // hmipserver tells nobody: no key mismatch either
+            assert.equal(await hmip('getKeyMismatchDevice', [false]), '');
+
+            // not on the list: not admitted
+            await hmip('setInstallModeWithWhitelist', [
+                true,
+                60,
+                [{ADDRESS: '3014F711A000000000000099', KEY_MODE: 'LOCAL', KEY}],
+            ]);
+            await waitFor(() => sim.getInclusions('hmip').length === 2, {what: 'the request off the list'});
+            assert.equal(sim.getInclusions('hmip')[1].result, 'ignored');
+            assert.equal(sim.getDevice('hmip', address), false);
+
+            // the right key, with dashes and in lower case as a client might send it
+            await hmip('setInstallModeWithWhitelist', [true, 60, whitelist('00112233-44556677-8899aabb-ccddeeff')]);
+            await waitFor(() => sim.getDevice('hmip', address) !== false, {what: 'the pairing'});
+            assert.equal(sim.getInclusions('hmip')[2].result, 'paired');
+            assert.equal(sim.inclusionScripts.hmip.size, 0);
+            await hmip('setInstallMode', [false]);
+            sim.removeDevice('hmip', address);
+        });
+
+        it('lets the device join a plain install mode and a key-server entry, and not a closed one', async () => {
+            const address = '0001D3C99C0089';
+            const sgtin = '3014F711A000000000000089';
+            const before = sim.getInclusions('hmip').length;
+            sim.scriptInclusion('hmip', sgtin, {key: KEY, devices: hmipDescriptions(address), delay: 50});
+            await hmip('setInstallMode', [true, 60]);
+            await hmip('setInstallMode', [false]);
+            // closed before the request: nothing heard
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            assert.equal(sim.getInclusions('hmip').length, before);
+
+            await hmip('setInstallModeWithWhitelist', [true, 60, [{ADDRESS: sgtin, KEY_MODE: 'KEYSERVER'}]]);
+            await waitFor(() => sim.getDevice('hmip', address) !== false, {what: 'the key-server pairing'});
+            assert.equal(sim.getInclusions('hmip').at(-1).result, 'paired');
+            await hmip('setInstallMode', [false]);
+            sim.removeDevice('hmip', address);
+
+            assert.throws(() => sim.scriptInclusion('hmip', ''), TypeError);
+        });
+    });
+
     describe('service message suppression (hmipserver)', () => {
         it("suppresses one parameter, or every service parameter with '', and ignores the rest", async () => {
             assert.deepEqual(await hmip('getSuppressedServiceMessages', [HMIP_MAINTENANCE]), []);
