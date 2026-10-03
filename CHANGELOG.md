@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.4.0 — 2026-10-03
 
 - `setInstallModeWithWhitelist(on, time, [{ADDRESS, KEY_MODE, KEY}])` on hmipserver, which answered
   the unknown-method fault: it opens the install mode for the listed SGTINs (Homematic Manager's

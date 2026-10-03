@@ -1,6 +1,6 @@
 {
   "name": "hm-simulator",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Simulates a Homematic CCU (rfd, hmipserver, VirtualDevices, CUxD, ReGa) for automated tests",
   "main": "sim.js",
   "types": "./sim.d.ts",
