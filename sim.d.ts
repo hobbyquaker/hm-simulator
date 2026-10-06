@@ -142,6 +142,8 @@ declare namespace HmSim {
         pingDelay?: number;
         startDelay?: number;
         unreachWrites?: 'accept' | 'fault';
+        /** `false`: a client's write to a sticky datapoint (FLAGS & 16) sends no event, as observed on rfd */
+        stickyWriteEvents?: boolean;
         firmwareUpdateDelay?: number;
         /** what `getVersion` answers */
         version?: string;

@@ -3,6 +3,15 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
+## Unreleased
+
+- The interface option `stickyWriteEvents` (default `true`, as before): with `false`, a client's
+  `setValue` or `putParamset(VALUES)` on a sticky datapoint (`FLAGS & 16`, the acknowledgement of
+  `STICKY_UNREACH`) changes the value and sends no event. A registered client on rfd 3.89.11 got
+  none when another client acknowledged the message, so a client that waits for the event shows
+  the device as "was unreachable" until its next read; a consumer's test can now ask for that
+  (B-6, found through occulited's service messages).
+
 ## 1.4.0 — 2026-10-03
 
 - `setInstallModeWithWhitelist(on, time, [{ADDRESS, KEY_MODE, KEY}])` on hmipserver, which answered

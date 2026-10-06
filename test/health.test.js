@@ -1,6 +1,6 @@
 'use strict';
 
-const {describe, it, before, after} = require('node:test');
+const {describe, it, before, after, afterEach} = require('node:test');
 const assert = require('node:assert/strict');
 
 const xmlrpc = require('homematic-xmlrpc');
@@ -229,6 +229,84 @@ describe('device and radio health', () => {
             [true, false],
         );
         assert.throws(() => sim.schedule([{at: 0, call: 'close'}]), /close is no scenario call/);
+    });
+});
+
+describe('stickyWriteEvents: false', () => {
+    const open = [];
+    // the sticky flag as rfd's descriptions carry it (FLAGS 25: visible, service, sticky)
+    const start = async (interfaces) => {
+        const paramsetDescriptions = structuredClone(fixture.paramsetDescriptions);
+        for (const description of Object.values(paramsetDescriptions)) {
+            if (description.STICKY_UNREACH) {
+                description.STICKY_UNREACH.FLAGS = 25;
+            }
+        }
+        const {sim} = await startSim({devices: structuredClone(fixture.devices), paramsetDescriptions, interfaces});
+        const rfd = binrpcCall(sim.ports.rfd);
+        const callbacks = await eventServer();
+        open.push(rfd, callbacks, sim);
+        await rfd('init', [callbacks.url, 'rf']);
+        return {sim, rfd, callbacks};
+    };
+
+    afterEach(() => {
+        for (const thing of open.splice(0)) {
+            thing.close();
+        }
+    });
+
+    it('clears an acknowledged STICKY_UNREACH without an event, as rfd was seen to do', async () => {
+        const {sim, rfd, callbacks} = await start({rfd: {stickyWriteEvents: false}});
+        sim.setReachable('rfd', SWITCH, false);
+        await waitFor(() => callbacks.has(`${SWITCH}:0`, 'STICKY_UNREACH', true), {what: 'STICKY_UNREACH event'});
+        sim.setReachable('rfd', SWITCH, true);
+        await waitFor(() => callbacks.has(`${SWITCH}:0`, 'UNREACH', false), {what: 'UNREACH false'});
+
+        const before = callbacks.events.length;
+        assert.equal(await rfd('setValue', [`${SWITCH}:0`, 'STICKY_UNREACH', false]), '');
+        // another write to the device does send its events: after them, none names the sticky value
+        assert.equal(await rfd('setValue', [`${SWITCH}:1`, 'STATE', true]), '');
+        await waitFor(() => callbacks.has(`${SWITCH}:1`, 'STATE', true), {what: 'the STATE event'});
+        assert.deepEqual(
+            callbacks.events.slice(before).filter((event) => event[0] === `${SWITCH}:0`),
+            [],
+        );
+        // the value is gone all the same: a read and the service messages say so
+        assert.equal(await rfd('getValue', [`${SWITCH}:0`, 'STICKY_UNREACH']), false);
+        assert.deepEqual(
+            (await rfd('getServiceMessages', [])).filter((message) => message[0] === `${SWITCH}:0`),
+            [],
+        );
+        // putParamset(VALUES) is the same write
+        const mark = callbacks.events.length;
+        sim.setReachable('rfd', SWITCH, false);
+        sim.setReachable('rfd', SWITCH, true);
+        await waitFor(
+            () =>
+                callbacks.events
+                    .slice(mark)
+                    .some((event) => event[0] === `${SWITCH}:0` && event[1] === 'UNREACH' && event[2] === false),
+            {what: 'the second outage and return'},
+        );
+        const again = callbacks.events.length;
+        await rfd('putParamset', [`${SWITCH}:0`, 'VALUES', {STICKY_UNREACH: false}]);
+        assert.equal(await rfd('getValue', [`${SWITCH}:0`, 'STICKY_UNREACH']), false);
+        assert.equal(await rfd('setValue', [`${SWITCH}:1`, 'STATE', false]), '');
+        await waitFor(() => callbacks.has(`${SWITCH}:1`, 'STATE', false), {what: 'the second STATE event'});
+        assert.deepEqual(
+            callbacks.events.slice(again).filter((event) => event[0] === `${SWITCH}:0`),
+            [],
+        );
+    });
+
+    it('still sends the events by default', async () => {
+        const {sim, rfd, callbacks} = await start();
+        sim.setReachable('rfd', SWITCH, false);
+        await waitFor(() => callbacks.has(`${SWITCH}:0`, 'STICKY_UNREACH', true), {what: 'STICKY_UNREACH event'});
+        sim.setReachable('rfd', SWITCH, true);
+        assert.equal(await rfd('setValue', [`${SWITCH}:0`, 'STICKY_UNREACH', false]), '');
+        await waitFor(() => callbacks.has(`${SWITCH}:0`, 'STICKY_UNREACH', false), {what: 'the event'});
     });
 });
 

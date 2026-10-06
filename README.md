@@ -226,6 +226,7 @@ UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
 | `pingDelay`                    | `0`                                                                            | milliseconds between `ping` and its `PONG`                                                                                                                                                                    |
 | `startDelay`                   | `0`                                                                            | milliseconds after `whenReady()` until the port accepts connections: a process that starts late (`sim.ports` knows the port from the start)                                                                   |
 | `unreachWrites`                | `'accept'`                                                                     | what `setValue`/`putParamset` to an unreachable device answer: `'accept'`, or `'fault'` (`notReachable`). The simulator's model, not a measurement                                                            |
+| `stickyWriteEvents`            | `true`                                                                         | `false`: a client's `setValue`/`putParamset` on a sticky datapoint (`FLAGS & 16`, the acknowledgement of `STICKY_UNREACH`) sends no event, see [Device and radio health](#device-and-radio-health)            |
 | `firmwareUpdateDelay`          | `0`                                                                            | milliseconds per step of a firmware update                                                                                                                                                                    |
 | `getServiceMessagesFault`      | `false`                                                                        | answer `getServiceMessages` with the unknown-method fault (`Invalid XML-RPC message`), as VirtualDevices, CUxD and hmipserver were seen to on 3.89.x                                                          |
 | `version`                      | `'2.6.0'` for `rfd` and `wired`, `'3.89.11.20260919'` for `hmip`               | what `getVersion` answers; the rest has no `getVersion`                                                                                                                                                       |
@@ -319,6 +320,13 @@ sim.regaSim.scripts; // every script the ReGa mock received
   with `setServiceMessage`. `STICKY_UNREACH` stays after the device is back until a client writes
   it `false`, as rfd does. A write to an unreachable device is accepted unless `unreachWrites` is
   `'fault'`.
+- That acknowledgement is answered with the channel's events, like every other write. On rfd
+  3.89.11 a registered client got **no** event when another client wrote `STICKY_UNREACH` `false`
+  (observed once, from the receiving client's log; a second measurement is pending): the
+  interface option `stickyWriteEvents: false` models that - a client's write to a datapoint with
+  the sticky flag (`FLAGS & 16`) changes the value and sends nothing, so only a read finds it
+  acknowledged. Use it to test that a client does not wait for an event that never comes. The
+  default stays `true` until the measurement is repeated.
 - The radio module is the HmIP device whose address is the last 14 characters of the interface's
   address in `listBidcosInterfaces` (its SGTIN), or a device of a radio module's type
   (`RPI-RF-MOD`, `HmIP-RFUSB`); without one only `listBidcosInterfaces` changes.
