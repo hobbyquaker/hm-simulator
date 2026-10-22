@@ -10,7 +10,7 @@ GitHub release notes.
   `STICKY_UNREACH`) changes the value and sends no event. A registered client on rfd 3.89.11 got
   none when another client acknowledged the message, so a client that waits for the event shows
   the device as "was unreachable" until its next read; a consumer's test can now ask for that
-  (B-6, found through occulited's service messages).
+  (found through occulited's service messages).
 
 ## 1.4.0 — 2026-10-03
 
@@ -20,7 +20,7 @@ GitHub release notes.
   puts an HmIP device in reach of the next install mode: it joins, or - with a whitelist `LOCAL` key
   that is not its own - is declined, nothing joins and the device stays in reach; `getInclusions`
   answers every request with its result (`paired`, `declined`, `ignored`), `getInstallWhitelist` the
-  open install mode's list. The simulator's model, not a measurement (Homematic Manager task 88).
+  open install mode's list. The simulator's model, not a measurement.
 
 ## 1.3.2
 
@@ -29,12 +29,11 @@ GitHub release notes.
   as both interface processes do on 3.89.11; it answered `''`. A paramset the channel does not list
   answers the new table entry `unknownParamsetDescription` (`-3 Unknown Paramset` / `-3 Unknown
 paramset`, measured); a paramset the channel has but the description set lacks still answers `''`
-  (B-5, found through node-red-contrib-ccu's handling of the fault on a real CCU).
+  (found through node-red-contrib-ccu's handling of the fault on a real CCU).
 - `getLinkPeers` of a device address faults on `rfd` with the `notSupported` entry (`-1 Failure`
   under rfd's table, as rfd 3.89.11 answers; `-1 Generic error` under the default one), where it
   answered the peers of all channels; on hmipserver and the other interfaces it answers the channels'
-  lists one after the other, a peer linked with two of the channels twice, as hmipserver 3.89.11 does
-  (B-4).
+  lists one after the other, a peer linked with two of the channels twice, as hmipserver 3.89.11 does.
 
 ## 1.3.1
 
@@ -42,14 +41,14 @@ paramset`, measured); a paramset the channel has but the description set lacks s
   `rfd` - a relay's own button on the relay, a dimmer's channel on its virtual channels - as rfd
   3.89.11 does although such a link works; filtered by an address the link carries its stored flags,
   0, as rfd answers there too. A test that shows a client how it handles rfd's flag can now make the
-  link with `addLink` instead of seeding it (B-3, found through Homematic Manager's links list).
+  link with `addLink` instead of seeding it (found through Homematic Manager's links list).
 - `replaceDevice` answers `true`, as the specification's `bool` says, where it answered `''` (a
   client that takes the answer as the success saw a replacement that did happen as failed).
 - rfd's `listReplaceableDevices` names only the devices of the same type that are unreachable
   (`setReachable(iface, address, false)`); a device that still answers is not replaced.
 - The declarations gain `clients` (the registered logic layers per interface, read-only, `Client`),
   `dispatch` with its `DispatchContext` (the servers' entry, which a test may wrap to record calls),
-  and `replaceDevice`'s `true` (B-2, found through Homematic Manager's tests on 1.3.0).
+  and `replaceDevice`'s `true` (found through Homematic Manager's tests on 1.3.0).
 
 ## 1.3.0
 
@@ -132,7 +131,7 @@ paramset`, measured); a paramset the channel has but the description set lacks s
   the members in `TEAM_CHANNELS`; `setTeam(channel, team)` moves it and deletes a team nobody is
   left in, `setTeam(channel, '')` puts it back into a team of its own, created like the one it
   left (`newDevices`, `deleteDevices`, `updateDevice` to the logic layers). The shape is rfd's
-  as Homematic Manager task 58 read it from a CCU3; when rfd deletes and creates the team devices
+  as Homematic Manager read it from a CCU3; when rfd deletes and creates the team devices
   is the simulator's model, not a measurement.
 
 ## 1.0.0

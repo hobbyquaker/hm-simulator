@@ -500,7 +500,7 @@ a run of the generator, or, better, by dumping a CCU that has one.
 ## Interface behaviour, measured
 
 Where the simulator imitates an interface process, this says whether the shape was measured on a
-CCU or is the simulator's model. The measurements were made for Homematic Manager (tasks 6 and 58)
+CCU or is the simulator's model. The measurements were made for Homematic Manager
 on CCUs with firmware 3.89.8 and 3.89.x.
 
 ### Direct links
