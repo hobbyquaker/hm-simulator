@@ -27,8 +27,8 @@ Usage: hm-simulator [options]
                             as one line to stdout with "-" (the log then goes to stderr)
   --config <file>           constructor options as a .json or .js file; the flags override it
   --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions, links,
-                            bidcosInterfaces}, such as data/fixtures/lab-2026-09.json; default:
-                            the bundled rfd and hmip lists
+                            bidcosInterfaces, paramsets}, such as data/fixtures/lab-2026-09.json;
+                            default: the bundled rfd and hmip lists
   --tls                     serve the XML-RPC servers over TLS with a generated certificate
   --tls-cert-out <file>     write that certificate (PEM) to the file
   --auth <user:password>    HTTP basic auth for the XML-RPC servers and ReGa
@@ -123,7 +123,7 @@ function readJson(file) {
  */
 /**
  * A device file: either `{<iface>: {devices}}` or a fixture `{devices, paramsetDescriptions, links,
- * bidcosInterfaces}` as data/fixtures/ and tools/dump-ccu.js have it.
+ * bidcosInterfaces, paramsets}` as data/fixtures/ and tools/dump-ccu.js have it.
  */
 function loadDevices(file) {
     const content = readJson(file);
@@ -133,6 +133,7 @@ function loadDevices(file) {
               paramsetDescriptions: content.paramsetDescriptions,
               links: content.links,
               bidcosInterfaces: content.bidcosInterfaces,
+              paramsets: content.paramsets,
           }
         : {devices: content};
 }
@@ -140,7 +141,7 @@ function loadDevices(file) {
 /** Takes what a device file brings along, unless the options already say it. */
 function applyDeviceFile(options, loaded, override) {
     options.devices = loaded.devices;
-    for (const key of ['paramsetDescriptions', 'links', 'bidcosInterfaces']) {
+    for (const key of ['paramsetDescriptions', 'links', 'bidcosInterfaces', 'paramsets']) {
         if (loaded[key] && (override || options[key] === undefined)) {
             options[key] = loaded[key];
         }

@@ -185,6 +185,13 @@ declare namespace HmSim {
         defaultRssi?: number;
         /** `{<iface>: {<address>: {<key>: value}}}`, what `getMetadata` answers before any `setMetadata` */
         metadata?: Record<string, Record<string, Record<string, unknown>>>;
+        /**
+         * `{<iface>: {<address>: {<MASTER|VALUES|SERVICE|peer address>: {<parameter>: value}}}}`: stored
+         * values a paramset starts with, on top of its description's defaults
+         */
+        paramsets?: Record<string, Record<string, Record<string, Record<string, unknown>>>>;
+        /** `{<iface>: {<address>: {<paramset>: id}}}`, what `getParamsetId` answers before the bundled ids */
+        paramsetIds?: Record<string, Record<string, Record<string, string>>>;
         tls?: TlsOption;
         auth?: BasicAuth;
     }
@@ -502,6 +509,8 @@ declare class HmSim {
     ): void;
     getLinks(iface: string, params?: unknown[]): Array<HmSim.Link & Record<string, unknown>>;
     getLinkPeers(iface: string, params: unknown[]): string[];
+    /** `getParamsetId(address, paramset)`: hmipserver's built id, or the BidCos device file's */
+    getParamsetId(iface: string, params: [address: string, paramset?: string]): string;
     deleteDevice(iface: string, address: string, flags?: number): '';
     replaceDevice(iface: string, oldAddress: string, newAddress: string): true;
     getKeyMismatchDevice(iface: string, params?: [reset?: boolean]): string;

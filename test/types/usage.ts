@@ -29,6 +29,8 @@ const sim = new HmSim({
     newDevices: {rfd: {devices: [device], delay: 10}},
     defaultRssi: -70,
     metadata: {hmip: {'X:1': {channelMode: 'shutter'}}},
+    paramsets: {hmip: {'X:1': {MASTER: {CHANNEL_OPERATION_MODE: 1}, 'Y:1': {SHORT_JT_OFF: 1}}}},
+    paramsetIds: {rfd: {'A:1': {LINK: 'switch_ch_link'}}},
     rega: {port: 0, listenAddress: '127.0.0.1', channels: []},
     tls: true,
     auth: {username: 'u', password: 'p'},
@@ -88,6 +90,7 @@ async function scenario(): Promise<void> {
     const clock: number = sim.interfaceClocks[0].utc;
     const refreshed: number = sim.firmwareListRefreshes[0].ts;
     const mode: unknown = sim.metadata.hmip['X:1'].channelMode;
+    const paramsetId: string = sim.getParamsetId('hmip', ['X:1', 'LINK']);
     const mismatch: string = sim.getKeyMismatchDevice('rfd', [true]);
     const suppressed: string[] = sim.getSuppressedServiceMessages('hmip', ['X:0']);
     sim.suppressServiceMessages('hmip', ['X:0', '', true]);
@@ -121,7 +124,20 @@ async function scenario(): Promise<void> {
     sim.clients = {};
 
     void [port, added, found, count, value, paramset, read, messages, results, log, pending, poisoned, missing];
-    void [answered, tempKey, seconds, names, keyChange, clock, refreshed, mode, mismatch, suppressed, sender];
+    void [
+        answered,
+        tempKey,
+        seconds,
+        names,
+        keyChange,
+        clock,
+        refreshed,
+        mode,
+        paramsetId,
+        mismatch,
+        suppressed,
+        sender,
+    ];
     void [interfaces, rpc, renames, scripts, fault, code, incomplete, replaced, subscribers];
 }
 

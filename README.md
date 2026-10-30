@@ -126,7 +126,7 @@ that starts with the bytes `Bin` is BIN-RPC, anything else XML-RPC over HTTP.
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | session          | `init` (register and de-register a logic layer), `ping`, `system.listMethods`, `system.methodHelp`, `system.multicall`                                                                                                                                |
 | devices          | `listDevices`, `getDeviceDescription`, `deleteDevice`, `replaceDevice`, `listReplaceableDevices`, `setInstallMode`, `setInstallModeWithWhitelist` (hmipserver), `getInstallMode`, `addDevice` (BidCos only), `getKeyMismatchDevice` (rfd, hmipserver) |
-| paramsets        | `getParamsetDescription`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                                                                                                                              |
+| paramsets        | `getParamsetDescription`, `getParamsetId`, `getParamset`, `putParamset`, `getValue`, `setValue`, `determineParameter`, `reportValueUsage`                                                                                                             |
 | links            | `getLinks`, `getLinkPeers`, `getLinkInfo`, `setLinkInfo`, `addLink`, `removeLink`, `activateLinkParamset`                                                                                                                                             |
 | interface        | `rssiInfo`, `listBidcosInterfaces`, `setBidcosInterface`, `getServiceMessages`, `setTempKey` (BidCos only), `changeKey` (rfd, hmipserver), `logLevel`, `getVersion`, `setInterfaceClock` (rfd, hmipserver), `getLGWStatus` (only when configured)     |
 | metadata         | `getMetadata`, `setMetadata` (rfd, hs485d, hmipserver), `getAllMetadata` (BidCos only)                                                                                                                                                                |
@@ -196,6 +196,8 @@ UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
 | `newDevices`               | `{}`                                                 | devices that appear when the install mode is switched on, `{<iface>: {devices, delay}}`       |
 | `defaultRssi`              | `-65`                                                | what `rssiInfo` answers where a device has no RSSI datapoint                                  |
 | `metadata`                 | `{}`                                                 | what `getMetadata` answers before any `setMetadata`, `{<iface>: {<address>: {<key>: value}}}` |
+| `paramsets`                | `{}`                                                 | stored values to start with, `{<iface>: {<address>: {<MASTER\|VALUES\|SERVICE\|peer>: {}}}}`  |
+| `paramsetIds`              | `{}`                                                 | what `getParamsetId` answers first, `{<iface>: {<address>: {<paramset>: id}}}`                |
 | `config.listenAddress`     | all interfaces                                       | `'127.0.0.1'` in tests                                                                        |
 | `config.binrpcListenPort`  | –                                                    | rfd                                                                                           |
 | `config.xmlrpcListenPort`  | –                                                    | hmipserver                                                                                    |
@@ -428,6 +430,7 @@ HMIP-PS, HMIP-SWDO, HMIP-WTH, HmIP-SMI and a radio module). Without `paramsetDes
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data/fixtures/lab-2026-09.json` | real devices of four test systems with the descriptions of their exact firmware, links and radio modules - the recommended one                                                    |
 | `data/fixtures/devices.json`     | generated from node-red-contrib-ccu's `paramsets.json`: real descriptions, synthesised channel indexes - HmIP-PDT, HmIPW-DRS8, HmIPW-DRI16, HmIPW-DRAP, HM-LC-Sw1-Pl, HM-CC-RT-DN |
+| `data/fixtures/hmip-wired.json`  | an HmIP-Wired distribution board: HmIPW-DRBL4, HmIPW-DRI32, HmIPW-DRI16, HmIPW-WRC6, links to the DRBL4 with the LINK paramsets the WebUI writes                                  |
 | `data/fixtures/lab-devices.json` | a real `listDevices` of two CCUs on firmware 3.89.8 (2026-09-05), no descriptions of its own - pass the ones of `devices.json` or the bundled set alongside                       |
 
 **`data/fixtures/lab-2026-09.json`**: four test systems (openccu-lite, the interface processes of
@@ -450,6 +453,30 @@ BidCos `LAB0000001`, HmIP `00000000000004` - link names are empty, and nothing e
 Real hardware's oddities stay: the CCU's own `HmIP-RCV-50` sends a trailing **empty string** in
 `CHILDREN`, for instance. The file is also a device file for the command line (`--devices`; add
 `--wired-port 0` or a port for BidCos-Wired).
+
+**`data/fixtures/hmip-wired.json`**: a wired blind actuator HmIPW-DRBL4 (firmware 1.6.0, four
+channels run as shutters), the input modules HmIPW-DRI32 (1.2.2) and HmIPW-DRI16 (1.4.6, as in
+`lab-2026-09.json`) with their inputs in key mode, and the wall button HmIPW-WRC6 (1.0.8). The
+descriptions of the DRBL4, DRI32 and WRC6 are hmipserver's answers as
+[pydevccu](https://github.com/danielperna84/pydevccu) (MIT) recorded them. Five links go to the
+DRBL4, and their `paramsets` hold what the CCU's WebUI writes for the profile chosen - the presets
+of its easymode file (`SHUTTER_VIRTUAL_RECEIVER/MULTI_MODE_INPUT_TRANSMITTER_1.tcl` and
+`…/KEY_TRANSCEIVER.tcl`, the first value where it lists several) on the description's defaults. The
+WebUI is eQ-3's current source, except for one link made the way the WebUI of firmware 3.87 made it:
+its shutter profiles still wrote `LONG_PROFILE_ACTION_TYPE` 5 for the long press, where the current
+one writes 1 (changed in June 2026), so a CCU keeps links of both kinds.
+
+| Sender     | Receiver    | Profile                                     |
+| ---------- | ----------- | ------------------------------------------- |
+| DRI32 `:1` | DRBL4 `:2`  | 3, "open / closed & up / down"              |
+| DRI32 `:2` | DRBL4 `:3`  | 3, "open / closed & up / down" (WebUI 3.87) |
+| DRI16 `:1` | DRBL4 `:6`  | 1, "open / up"                              |
+| WRC6 `:1`  | DRBL4 `:10` | 3, "open / closed & up / down"              |
+| WRC6 `:2`  | DRBL4 `:14` | 4, "move to position"                       |
+
+Pass the four properties (`devices`, `paramsetDescriptions`, `links`, `paramsets`) to the
+constructor, or the file to `--devices`. `tools/fixture-hmip-wired.js` builds it from a pydevccu
+package and an OpenCCU-Base checkout.
 
 **How descriptions are found.** A description is looked up by
 `<interface>/<type>/<firmware>/<version>/<channel type>/<paramset>`, and a device reports the
@@ -550,6 +577,29 @@ What a `putParamset MASTER` does, per interface (`interfaces.<iface>.configPendi
 
 The two models are the explanations that competed before the measurement (Homematic Manager issue
 #98); they stay for applications that want to test against them.
+
+### Paramset ids
+
+`getParamsetId(address, paramset)` is the CCU's own name of a paramset; its WebUI picks the form of a
+channel or a link side by it (`easymodes/<id>.tcl`). Measured 2026-10-30 on firmware 3.89.11:
+
+- **hmipserver builds it** from the device type, the channel index and the key, lower case and
+  joined by `_`: `hmipw-drbl4_2_link`, `hmipw-dri16_1_master`, `hmipw-dri16_master` for a device
+  address. It does that for any key - `VALUES`, `SERVICE`, a peer address
+  (`hmipw-dri16_1_00000000000102:1`), a name the channel does not have, `null` without one - and
+  for a channel without a LINK paramset as well. The simulator does the same on `hmip`, `virtual`
+  and `cuxd` (VirtualDevices and CUxD not measured).
+- **rfd and hs485d answer the `id` of the `<paramset>` in the device file** (`firmware/rftypes`,
+  `firmware/hs485types`): `cc_tc_dev_master` for a device address (MASTER only), `maint_ch_master`,
+  `cc_tc_ch_wsr_link`, `hmw_input_ch_values` for a channel. Another key on a channel is taken as a
+  peer address and answers the LINK id; a paramset the address does not have - LINK or VALUES of a
+  device, LINK of a maintenance channel, any other key there - is `-3 Unknown paramset`. The
+  simulator answers from `data/paramset-ids.json` (261 device types, by type and the device file's
+  version, which is the description's `VERSION`; built by `tools/paramset-ids.js` from
+  OpenCCU-Base), the `unknownParamsetDescription` entry of the fault table for a paramset the
+  address does not list, and `''` for a type the files do not describe.
+- An unknown address is `unknownInstance` on all of them. `paramsetIds` in the constructor options
+  answers before the rules above.
 
 ### Fault codes
 
@@ -737,8 +787,8 @@ Usage: hm-simulator [options]
                             as one line to stdout with "-" (the log then goes to stderr)
   --config <file>           constructor options as a .json or .js file; the flags override it
   --devices <file>          a device file: {devices: {rfd, hmip, ...}, paramsetDescriptions, links,
-                            bidcosInterfaces}, such as data/fixtures/lab-2026-09.json; default:
-                            the bundled rfd and hmip lists
+                            bidcosInterfaces, paramsets}, such as data/fixtures/lab-2026-09.json;
+                            default: the bundled rfd and hmip lists
   --tls                     serve the XML-RPC servers over TLS with a generated certificate
   --tls-cert-out <file>     write that certificate (PEM) to the file
   --auth <user:password>    HTTP basic auth for the XML-RPC servers and ReGa
