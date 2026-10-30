@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.5.0 — 2026-10-30
 
 - `getParamsetId(address, paramset)`, which answered the unknown-method fault: hmipserver's id
   built from the device type, channel index and key (`hmipw-drbl4_2_link`), and on rfd and
