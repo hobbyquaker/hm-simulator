@@ -3,6 +3,14 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
+## Unreleased
+
+- XML-RPC answers write their strings untyped, `<value>2.6.0</value>` instead of
+  `<value><string>2.6.0</string></value>`, in results, structs, arrays and fault strings alike, as
+  rfd, hs485d and hmipserver answer on firmware 3.89.11 (measured). A client decodes both the same;
+  one that matched the bytes - ioBroker.discovery looks for `<value>[.\d]+</value>` in the answer
+  to `getVersion` - did not recognise the simulator's ports as a CCU's.
+
 ## 1.5.0 — 2026-10-30
 
 - `getParamsetId(address, paramset)`, which answered the unknown-method fault: hmipserver's id

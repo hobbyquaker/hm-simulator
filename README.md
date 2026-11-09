@@ -179,7 +179,10 @@ more talkative restarts, see [Interface processes misbehaving](#interface-proces
 
 Strings: an XML-RPC request declared ISO-8859-1 (in the XML declaration or the Content-Type
 header), as the interface processes speak it, is read as such, anything else as UTF-8; answers are
-UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them.
+UTF-8. BIN-RPC strings go out as ISO-8859-1, as rfd sends them. An XML-RPC answer writes every
+string untyped, as a bare `<value>2.6.0</value>` without `<string>` - in results, structs, arrays
+and fault strings, as rfd, hs485d and hmipserver did on firmware 3.89.11 (measured); a client
+decodes it the same, a check that matches the bytes sees what a CCU sends.
 
 ## Options
 
