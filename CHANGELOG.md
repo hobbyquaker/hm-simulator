@@ -3,7 +3,7 @@
 All notable changes of hm-simulator. The release workflow takes each version's section from here for the
 GitHub release notes.
 
-## Unreleased
+## 1.5.1 — 2026-11-09
 
 - XML-RPC answers write their strings untyped, `<value>2.6.0</value>` instead of
   `<value><string>2.6.0</string></value>`, in results, structs, arrays and fault strings alike, as
